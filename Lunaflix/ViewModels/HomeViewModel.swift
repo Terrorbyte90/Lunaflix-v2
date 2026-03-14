@@ -20,13 +20,61 @@ final class HomeViewModel: ObservableObject {
         isLoading = true
         loadTask?.cancel()
         loadTask = Task {
-            // Simulate brief async load
             try? await Task.sleep(for: .milliseconds(350))
             guard !Task.isCancelled else { return }
+
             heroContents = MockData.heroContent
-            categories = MockData.categories
+            var cats = MockData.categories
+
+            // Load Mux assets if credentials are set
+            if KeychainService.hasMuxCredentials {
+                if let muxCategory = await loadMuxCategory() {
+                    cats.insert(muxCategory, at: 0)
+                }
+            }
+
+            categories = cats
             isLoading = false
         }
+    }
+
+    private func loadMuxCategory() async -> ContentCategory? {
+        do {
+            let assets = try await MuxService.shared.listAssets()
+            let readyAssets = assets.filter { $0.isReady }
+            guard !readyAssets.isEmpty else { return nil }
+
+            let contents: [LunaContent] = readyAssets.map { asset in
+                LunaContent(
+                    title: asset.displayTitle,
+                    description: "Video från Mux-biblioteket.",
+                    type: .movie,
+                    genre: [.action],
+                    rating: 0,
+                    year: Calendar.current.component(.year, from: Date()),
+                    duration: asset.formattedDuration,
+                    ageRating: .all,
+                    thumbnailGradient: thumbnailStyle(for: asset.id),
+                    heroGradient: thumbnailStyle(for: asset.id),
+                    muxPlaybackID: asset.primaryPlaybackID
+                )
+            }
+
+            return ContentCategory(
+                title: "Mitt bibliotek",
+                subtitle: "\(contents.count) videor",
+                contents: contents,
+                style: .wideCard
+            )
+        } catch {
+            return nil
+        }
+    }
+
+    private func thumbnailStyle(for id: String) -> ThumbnailStyle {
+        let styles: [ThumbnailStyle] = [.purple, .blue, .teal, .rose, .amber, .indigo, .emerald, .crimson, .violet, .ocean]
+        let hash = abs(id.hashValue)
+        return styles[hash % styles.count]
     }
 
     private func startHeroTimer() {
@@ -47,7 +95,6 @@ final class HomeViewModel: ObservableObject {
         withAnimation(.lunaSnappy) {
             currentHeroIndex = index
         }
-        // Restart timer so it doesn't immediately jump after manual selection
         startHeroTimer()
     }
 

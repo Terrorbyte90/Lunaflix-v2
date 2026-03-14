@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct LunaflixApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var appState = AppState()
 
     var body: some Scene {
@@ -9,9 +10,37 @@ struct LunaflixApp: App {
             ContentView()
                 .environmentObject(appState)
                 .preferredColorScheme(.dark)
-                .tint(Color.lunaAccent)   // System accent for alerts, menus, etc.
+                .tint(Color.lunaAccent)
         }
     }
+}
+
+// MARK: - App Delegate (for orientation lock)
+
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        supportedInterfaceOrientationsFor window: UIWindow?
+    ) -> UIInterfaceOrientationMask {
+        return OrientationManager.shared.allowLandscape
+            ? .allButUpsideDown
+            : .portrait
+    }
+}
+
+// MARK: - Orientation Manager
+
+final class OrientationManager: ObservableObject {
+    static let shared = OrientationManager()
+
+    @Published var allowLandscape = false {
+        didSet {
+            // Notify UIKit that supported orientations changed
+            UIViewController.attemptRotationToDeviceOrientation()
+        }
+    }
+
+    private init() {}
 }
 
 // MARK: - App State
@@ -20,8 +49,6 @@ final class AppState: ObservableObject {
     @Published var selectedTab: Tab = .home
     @Published var currentUser: User = User.mock
     @Published var isLoggedIn: Bool = true
-
-    // Global content navigation (for deep linking)
     @Published var presentedContent: LunaContent? = nil
 }
 

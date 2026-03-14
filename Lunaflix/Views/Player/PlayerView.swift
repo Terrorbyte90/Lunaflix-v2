@@ -1,18 +1,24 @@
 import SwiftUI
+import AVKit
+import AVFoundation
+
+// MARK: - Player View
 
 struct PlayerView: View {
     let content: LunaContent
     @Environment(\.dismiss) private var dismiss
 
+    @State private var player: AVPlayer? = nil
     @State private var isPlaying = true
     @State private var showControls = true
-    @State private var progress: Double = 0.15
+    @State private var progress: Double = 0
+    @State private var duration: Double = 1
     @State private var isMuted = false
     @State private var showSettings = false
     @State private var isScrubbing = false
-
-    // Cancellable auto-hide task
+    @State private var isFullscreen = false
     @State private var hideTask: Task<Void, Never>? = nil
+    @State private var timeObserver: Any? = nil
 
     private let controlHideDelay: TimeInterval = 3.5
 
@@ -20,22 +26,24 @@ struct PlayerView: View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            // Video background (gradient stand-in)
-            ZStack {
-                content.heroGradient.gradient
+            if let player {
+                // Real AVPlayer
+                AVPlayerRepresentable(player: player)
                     .ignoresSafeArea()
-
-                GeometryReader { geo in
-                    Circle()
-                        .fill(content.heroGradient.accentColor.opacity(0.18))
-                        .frame(width: geo.size.width * 0.9)
-                        .blur(radius: 80)
-                        .position(x: geo.size.width * 0.6, y: geo.size.height * 0.4)
+            } else {
+                // Fallback gradient while loading
+                ZStack {
+                    content.heroGradient.gradient.ignoresSafeArea()
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .scaleEffect(1.5)
+                        .tint(.white)
                 }
+            }
 
-                // Dimming overlay for readability
-                Color.black
-                    .opacity(showControls ? 0.55 : 0.08)
+            // Dimming overlay
+            if showControls {
+                Color.black.opacity(0.5)
                     .ignoresSafeArea()
                     .animation(.easeInOut(duration: 0.3), value: showControls)
             }
@@ -46,7 +54,7 @@ struct PlayerView: View {
                 .animation(.easeInOut(duration: 0.25), value: showControls)
                 .allowsHitTesting(showControls)
 
-            // Paused indicator (only when paused AND controls hidden)
+            // Paused indicator
             if !isPlaying && !showControls {
                 Image(systemName: "pause.fill")
                     .font(.system(size: 40))
@@ -60,11 +68,21 @@ struct PlayerView: View {
             withAnimation(.easeInOut(duration: 0.22)) {
                 showControls.toggle()
             }
-            if showControls {
-                scheduleHide()
+            if showControls { scheduleHide() }
+        }
+        .onAppear {
+            setupPlayer()
+            scheduleHide()
+            OrientationManager.shared.allowLandscape = true
+        }
+        .onDisappear {
+            tearDownPlayer()
+            OrientationManager.shared.allowLandscape = false
+            // Force back to portrait
+            if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                scene.requestGeometryUpdate(.iOS(interfaceOrientations: .portrait)) { _ in }
             }
         }
-        .onAppear { scheduleHide() }
         .sheet(isPresented: $showSettings) {
             PlayerSettingsSheet()
         }
@@ -94,7 +112,7 @@ struct PlayerView: View {
                         .foregroundColor(.white)
                         .lineLimit(1)
                     if content.type == .series {
-                        Text("S1 • E3 • Avslöjandet")
+                        Text("S1 • E1")
                             .font(LunaFont.caption())
                             .foregroundColor(.lunaTextSecondary)
                     }
@@ -106,6 +124,7 @@ struct PlayerView: View {
                     Button {
                         LunaHaptic.light()
                         isMuted.toggle()
+                        player?.isMuted = isMuted
                     } label: {
                         Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
                             .font(.system(size: 18))
@@ -115,9 +134,7 @@ struct PlayerView: View {
                     }
                     .buttonStyle(LunaPressStyle())
 
-                    Button {
-                        showSettings = true
-                    } label: {
+                    Button { showSettings = true } label: {
                         Image(systemName: "ellipsis")
                             .font(.system(size: 20, weight: .bold))
                             .foregroundColor(.white)
@@ -132,11 +149,11 @@ struct PlayerView: View {
 
             Spacer()
 
-            // Center play controls
+            // Center transport controls
             HStack(spacing: 52) {
                 Button {
                     LunaHaptic.light()
-                    progress = max(0, progress - 0.1)
+                    seek(by: -10)
                     rescheduleHide()
                 } label: {
                     Image(systemName: "gobackward.10")
@@ -149,7 +166,7 @@ struct PlayerView: View {
 
                 Button {
                     LunaHaptic.medium()
-                    withAnimation(.lunaSnappy) { isPlaying.toggle() }
+                    togglePlayback()
                     if isPlaying { rescheduleHide() }
                 } label: {
                     ZStack {
@@ -166,7 +183,7 @@ struct PlayerView: View {
 
                 Button {
                     LunaHaptic.light()
-                    progress = min(1, progress + 0.1)
+                    seek(by: 10)
                     rescheduleHide()
                 } label: {
                     Image(systemName: "goforward.10")
@@ -180,36 +197,25 @@ struct PlayerView: View {
 
             Spacer()
 
-            // Bottom: seekbar + time + actions
+            // Bottom: seekbar + time + fullscreen
             VStack(spacing: 14) {
                 // Seekbar
                 VStack(spacing: 6) {
                     GeometryReader { geo in
                         let totalWidth = geo.size.width
-
                         ZStack(alignment: .leading) {
-                            // Track background
                             Capsule()
                                 .fill(Color.white.opacity(0.15))
                                 .frame(height: isScrubbing ? 6 : 4)
-
-                            // Buffered
                             Capsule()
                                 .fill(Color.white.opacity(0.3))
-                                .frame(width: totalWidth * min(progress + 0.15, 1), height: isScrubbing ? 6 : 4)
-
-                            // Played
+                                .frame(width: totalWidth * min(progress + 0.08, 1), height: isScrubbing ? 6 : 4)
                             Capsule()
                                 .fill(LinearGradient.lunaAccentGradient)
                                 .frame(width: totalWidth * progress, height: isScrubbing ? 6 : 4)
-
-                            // Scrubber thumb
                             Circle()
                                 .fill(Color.white)
-                                .frame(
-                                    width: isScrubbing ? 20 : 14,
-                                    height: isScrubbing ? 20 : 14
-                                )
+                                .frame(width: isScrubbing ? 20 : 14, height: isScrubbing ? 20 : 14)
                                 .shadow(color: .black.opacity(0.35), radius: 4)
                                 .offset(x: totalWidth * progress - (isScrubbing ? 10 : 7))
                         }
@@ -222,30 +228,31 @@ struct PlayerView: View {
                                         LunaHaptic.light()
                                         hideTask?.cancel()
                                     }
-                                    progress = max(0, min(1, val.location.x / totalWidth))
+                                    let newProgress = max(0, min(1, val.location.x / totalWidth))
+                                    progress = newProgress
                                 }
                                 .onEnded { _ in
                                     isScrubbing = false
+                                    seekToProgress(progress)
                                     rescheduleHide()
                                 }
                         )
                     }
                     .frame(height: 20)
 
-                    // Time labels
                     HStack {
-                        Text(timeString(from: progress * totalSeconds))
+                        Text(timeString(from: progress * duration))
                             .font(LunaFont.mono(11))
                             .foregroundColor(.lunaTextSecondary)
                         Spacer()
-                        Text("-" + timeString(from: (1 - progress) * totalSeconds))
+                        Text("-" + timeString(from: (1 - progress) * duration))
                             .font(LunaFont.mono(11))
                             .foregroundColor(.lunaTextSecondary)
                     }
                 }
                 .padding(.horizontal, 20)
 
-                // Bottom action row
+                // Bottom row
                 HStack {
                     Button {} label: {
                         Label("Textning", systemImage: "captions.bubble.fill")
@@ -257,9 +264,7 @@ struct PlayerView: View {
                     Spacer()
 
                     if content.type == .series {
-                        Button {
-                            LunaHaptic.light()
-                        } label: {
+                        Button { LunaHaptic.light() } label: {
                             HStack(spacing: 5) {
                                 Text("Nästa")
                                     .font(LunaFont.caption())
@@ -273,10 +278,16 @@ struct PlayerView: View {
 
                     Spacer()
 
-                    Button {} label: {
-                        Label("AirPlay", systemImage: "airplayvideo")
-                            .font(LunaFont.caption())
+                    // Fullscreen toggle
+                    Button {
+                        LunaHaptic.light()
+                        toggleFullscreen()
+                    } label: {
+                        Image(systemName: isFullscreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                            .font(.system(size: 15))
                             .foregroundColor(.white.opacity(0.75))
+                            .frame(width: 36, height: 36)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(LunaPressStyle())
                 }
@@ -286,18 +297,103 @@ struct PlayerView: View {
         }
     }
 
-    // MARK: - Helpers
+    // MARK: - AVPlayer Setup
 
-    private var totalSeconds: Double {
-        if content.duration.contains("t") {
-            let parts = content.duration.components(separatedBy: "t ")
-            let hours = Double(parts[0].trimmingCharacters(in: .whitespaces)) ?? 0
-            let minStr = parts.last?.replacingOccurrences(of: "min", with: "").trimmingCharacters(in: .whitespaces)
-            let mins = Double(minStr ?? "0") ?? 0
-            return (hours * 60 + mins) * 60
+    private func setupPlayer() {
+        if let playbackID = content.muxPlaybackID {
+            let hlsURL = URL(string: "https://stream.mux.com/\(playbackID).m3u8")!
+            let asset = AVURLAsset(url: hlsURL, options: [
+                AVURLAssetPreferPreciseDurationAndTimingKey: true
+            ])
+            let item = AVPlayerItem(asset: asset)
+            // Buffer 10 seconds ahead for lag-free playback
+            item.preferredForwardBufferDuration = 10
+            item.automaticallyPreservesTimeOffsetFromLive = false
+
+            let avPlayer = AVPlayer(playerItem: item)
+            avPlayer.automaticallyWaitsToMinimizeStalling = true
+            avPlayer.isMuted = isMuted
+
+            // Observe time
+            let interval = CMTime(seconds: 0.5, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+            timeObserver = avPlayer.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak avPlayer] time in
+                guard let avPlayer, let item = avPlayer.currentItem else { return }
+                let d = item.duration.seconds
+                guard d.isFinite, d > 0 else { return }
+                DispatchQueue.main.async {
+                    if !isScrubbing {
+                        progress = time.seconds / d
+                    }
+                    duration = d
+                }
+            }
+
+            player = avPlayer
+            avPlayer.play()
         }
-        return 5400
     }
+
+    private func tearDownPlayer() {
+        hideTask?.cancel()
+        if let observer = timeObserver, let p = player {
+            p.removeTimeObserver(observer)
+        }
+        player?.pause()
+        player = nil
+        timeObserver = nil
+    }
+
+    private func togglePlayback() {
+        if isPlaying {
+            player?.pause()
+        } else {
+            player?.play()
+        }
+        withAnimation(.lunaSnappy) { isPlaying.toggle() }
+    }
+
+    private func seek(by seconds: Double) {
+        guard let player else { return }
+        let current = player.currentTime().seconds
+        let target = max(0, min(duration, current + seconds))
+        let time = CMTime(seconds: target, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+        player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
+    }
+
+    private func seekToProgress(_ p: Double) {
+        guard let player else { return }
+        let target = p * duration
+        let time = CMTime(seconds: target, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+        player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
+    }
+
+    private func toggleFullscreen() {
+        isFullscreen.toggle()
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene else { return }
+        let orientation: UIInterfaceOrientationMask = isFullscreen ? .landscapeRight : .portrait
+        scene.requestGeometryUpdate(.iOS(interfaceOrientations: orientation)) { _ in }
+    }
+
+    // MARK: - Control timing
+
+    private func scheduleHide() {
+        hideTask?.cancel()
+        hideTask = Task {
+            try? await Task.sleep(for: .seconds(controlHideDelay))
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                if isPlaying && !isScrubbing {
+                    withAnimation(.easeInOut(duration: 0.4)) { showControls = false }
+                }
+            }
+        }
+    }
+
+    private func rescheduleHide() {
+        if showControls { scheduleHide() }
+    }
+
+    // MARK: - Time helpers
 
     private func timeString(from seconds: Double) -> String {
         let s = max(0, seconds)
@@ -308,49 +404,48 @@ struct PlayerView: View {
             ? String(format: "%d:%02d:%02d", h, m, sec)
             : String(format: "%d:%02d", m, sec)
     }
+}
 
-    private func scheduleHide() {
-        hideTask?.cancel()
-        hideTask = Task {
-            try? await Task.sleep(for: .seconds(controlHideDelay))
-            guard !Task.isCancelled else { return }
-            await MainActor.run {
-                if isPlaying && !isScrubbing {
-                    withAnimation(.easeInOut(duration: 0.4)) {
-                        showControls = false
-                    }
-                }
-            }
-        }
+// MARK: - AVPlayer UIViewControllerRepresentable
+
+struct AVPlayerRepresentable: UIViewControllerRepresentable {
+    let player: AVPlayer
+
+    func makeUIViewController(context: Context) -> AVPlayerViewController {
+        let vc = AVPlayerViewController()
+        vc.player = player
+        vc.showsPlaybackControls = false   // we use our own controls
+        vc.videoGravity = .resizeAspect
+        vc.view.backgroundColor = .black
+        return vc
     }
 
-    private func rescheduleHide() {
-        if showControls { scheduleHide() }
+    func updateUIViewController(_ vc: AVPlayerViewController, context: Context) {
+        vc.player = player
     }
 }
 
-// MARK: - Player Settings Sheet
+// MARK: - Player Settings Sheet (unchanged)
 
 struct PlayerSettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
 
-    let qualities = ["Automatisk", "4K Ultra HD", "HD 1080p", "HD 720p", "SD"]
-    let languages = ["Svenska", "Engelska", "Norska", "Danska"]
-    let subtitles = ["Av", "Svenska", "Engelska"]
+    let qualities  = ["Automatisk", "4K Ultra HD", "HD 1080p", "HD 720p", "SD"]
+    let languages  = ["Svenska", "Engelska", "Norska", "Danska"]
+    let subtitles  = ["Av", "Svenska", "Engelska"]
 
     @State private var selectedQuality = "HD 1080p"
-    @State private var selectedLang = "Svenska"
-    @State private var selectedSub = "Av"
+    @State private var selectedLang    = "Svenska"
+    @State private var selectedSub     = "Av"
 
     var body: some View {
         NavigationStack {
             ZStack {
                 Color.lunaSurface.ignoresSafeArea()
-
                 List {
-                    settingsSection("Kvalitet", options: qualities, selected: $selectedQuality)
-                    settingsSection("Ljud", options: languages, selected: $selectedLang)
-                    settingsSection("Textning", options: subtitles, selected: $selectedSub)
+                    settingsSection("Kvalitet",  options: qualities,  selected: $selectedQuality)
+                    settingsSection("Ljud",      options: languages,  selected: $selectedLang)
+                    settingsSection("Textning",  options: subtitles,  selected: $selectedSub)
                 }
                 .scrollContentBackground(.hidden)
                 .background(Color.lunaSurface)
@@ -378,8 +473,7 @@ struct PlayerSettingsSheet: View {
                     selected.wrappedValue = opt
                 } label: {
                     HStack {
-                        Text(opt)
-                            .foregroundColor(.lunaTextPrimary)
+                        Text(opt).foregroundColor(.lunaTextPrimary)
                         Spacer()
                         if selected.wrappedValue == opt {
                             Image(systemName: "checkmark")

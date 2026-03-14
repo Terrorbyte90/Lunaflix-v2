@@ -21,6 +21,7 @@ struct LunaContent: Identifiable, Hashable {
     let continueProgress: Double     // 0.0 - 1.0
     let numberOfSeasons: Int?
     let episodes: [Episode]
+    let muxPlaybackID: String?
 
     init(
         id: UUID = UUID(),
@@ -40,7 +41,8 @@ struct LunaContent: Identifiable, Hashable {
         isContinuing: Bool = false,
         continueProgress: Double = 0,
         numberOfSeasons: Int? = nil,
-        episodes: [Episode] = []
+        episodes: [Episode] = [],
+        muxPlaybackID: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -60,6 +62,7 @@ struct LunaContent: Identifiable, Hashable {
         self.continueProgress = continueProgress
         self.numberOfSeasons = numberOfSeasons
         self.episodes = episodes
+        self.muxPlaybackID = muxPlaybackID
     }
 
     static func == (lhs: LunaContent, rhs: LunaContent) -> Bool { lhs.id == rhs.id }

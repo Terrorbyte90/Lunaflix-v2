@@ -25,6 +25,12 @@
 		AA000016 /* ContentCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100016 /* ContentCard.swift */; };
 		AA000017 /* LunaTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100017 /* LunaTabBar.swift */; };
 		AA000018 /* DownloadsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100018 /* DownloadsView.swift */; };
+		AA000019 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100019 /* KeychainService.swift */; };
+		AA000020 /* MuxService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100020 /* MuxService.swift */; };
+		AA000021 /* MuxAsset.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100021 /* MuxAsset.swift */; };
+		AA000022 /* MuxViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100022 /* MuxViewModel.swift */; };
+		AA000023 /* MuxSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100023 /* MuxSettingsView.swift */; };
+		AA000024 /* UploadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100024 /* UploadView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -46,6 +52,12 @@
 		AA100016 /* ContentCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentCard.swift; sourceTree = "<group>"; };
 		AA100017 /* LunaTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LunaTabBar.swift; sourceTree = "<group>"; };
 		AA100018 /* DownloadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsView.swift; sourceTree = "<group>"; };
+		AA100019 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
+		AA100020 /* MuxService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuxService.swift; sourceTree = "<group>"; };
+		AA100021 /* MuxAsset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuxAsset.swift; sourceTree = "<group>"; };
+		AA100022 /* MuxViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuxViewModel.swift; sourceTree = "<group>"; };
+		AA100023 /* MuxSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuxSettingsView.swift; sourceTree = "<group>"; };
+		AA100024 /* UploadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadView.swift; sourceTree = "<group>"; };
 		AAPRODUCT /* Lunaflix.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lunaflix.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -75,6 +87,7 @@
 				AAGRP0020 /* Theme */,
 				AAGRP0030 /* Models */,
 				AAGRP0040 /* ViewModels */,
+				AAGRP0045 /* Services */,
 				AAGRP0050 /* Views */,
 			);
 			path = Lunaflix;
@@ -101,6 +114,7 @@
 			children = (
 				AA100003 /* Content.swift */,
 				AA100004 /* MockData.swift */,
+				AA100021 /* MuxAsset.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -111,8 +125,18 @@
 				AA100005 /* HomeViewModel.swift */,
 				AA100006 /* SearchViewModel.swift */,
 				AA100007 /* ProfileViewModel.swift */,
+				AA100022 /* MuxViewModel.swift */,
 			);
 			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		AAGRP0045 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				AA100019 /* KeychainService.swift */,
+				AA100020 /* MuxService.swift */,
+			);
+			path = Services;
 			sourceTree = "<group>";
 		};
 		AAGRP0050 /* Views */ = {
@@ -126,6 +150,8 @@
 				AAGRP0056 /* Profile */,
 				AAGRP0057 /* Downloads */,
 				AAGRP0058 /* Components */,
+				AAGRP0059 /* Settings */,
+				AAGRP0060 /* Upload */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -195,6 +221,22 @@
 				AA100017 /* LunaTabBar.swift */,
 			);
 			path = Components;
+			sourceTree = "<group>";
+		};
+		AAGRP0059 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				AA100023 /* MuxSettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		AAGRP0060 /* Upload */ = {
+			isa = PBXGroup;
+			children = (
+				AA100024 /* UploadView.swift */,
+			);
+			path = Upload;
 			sourceTree = "<group>";
 		};
 		AAGRP0099 /* Products */ = {
@@ -292,6 +334,12 @@
 				AA000016 /* ContentCard.swift in Sources */,
 				AA000017 /* LunaTabBar.swift in Sources */,
 				AA000018 /* DownloadsView.swift in Sources */,
+				AA000019 /* KeychainService.swift in Sources */,
+				AA000020 /* MuxService.swift in Sources */,
+				AA000021 /* MuxAsset.swift in Sources */,
+				AA000022 /* MuxViewModel.swift in Sources */,
+				AA000023 /* MuxSettingsView.swift in Sources */,
+				AA000024 /* UploadView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -425,6 +473,7 @@
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Lunaflix behöver åtkomst till ditt fotobibliotek för att du ska kunna ladda upp videor.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -451,6 +500,7 @@
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Lunaflix behöver åtkomst till ditt fotobibliotek för att du ska kunna ladda upp videor.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

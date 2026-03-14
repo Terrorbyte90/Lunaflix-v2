@@ -5,6 +5,7 @@ struct ProfileView: View {
     @State private var selectedContent: LunaContent? = nil
     @State private var showStreamingPicker = false
     @State private var showDownloadPicker = false
+    @State private var showMuxSettings = false
 
     var body: some View {
         ZStack {
@@ -39,6 +40,9 @@ struct ProfileView: View {
         }
         .sheet(item: $selectedContent) { content in
             ContentDetailView(content: content)
+        }
+        .sheet(isPresented: $showMuxSettings) {
+            MuxSettingsView()
         }
         .confirmationDialog(
             "Streamingkvalitet",
@@ -307,6 +311,18 @@ struct ProfileView: View {
                 settingsRow {
                     Button {} label: {
                         settingsNavRow("Hantera prenumeration", icon: "creditcard.fill", color: .lunaAccentLight, value: nil)
+                    }
+                    .buttonStyle(LunaPressStyle(scale: 0.99))
+                }
+                settingsDivider
+                settingsRow {
+                    Button { showMuxSettings = true } label: {
+                        settingsNavRow(
+                            "Mux-inställningar",
+                            icon: "cloud.fill",
+                            color: .lunaAccentLight,
+                            value: KeychainService.hasMuxCredentials ? "Ansluten" : nil
+                        )
                     }
                     .buttonStyle(LunaPressStyle(scale: 0.99))
                 }
