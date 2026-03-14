@@ -33,6 +33,13 @@ struct ContentDetailView: View {
                         .padding(.horizontal, 16)
                         .padding(.top, 18)
 
+                    // Luna age row (only for Mux library clips with recording date)
+                    if let date = content.recordingDate {
+                        lunaAgeRow(date: date)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 14)
+                    }
+
                     descriptionSection
                         .padding(.horizontal, 16)
                         .padding(.top, 20)
@@ -140,7 +147,7 @@ struct ContentDetailView: View {
                     badgeView("NYTT", bg: .lunaAccent, fg: .white)
                 }
                 if content.isTrending {
-                    badgeView("TRENDING", bg: .lunaGold, fg: .black)
+                    badgeView("POPULÄRT", bg: .lunaGold, fg: .black)
                 }
             }
 
@@ -344,6 +351,37 @@ struct ContentDetailView: View {
                 .foregroundColor(.lunaTextMuted)
         }
         .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - Luna Age Row
+
+    private func lunaAgeRow(date: Date) -> some View {
+        HStack(spacing: 14) {
+            Text("🌙")
+                .font(.system(size: 28))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(LunaAge.ageLabel(at: date))
+                    .font(LunaFont.body())
+                    .fontWeight(.semibold)
+                    .foregroundColor(.lunaTextPrimary)
+
+                HStack(spacing: 4) {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 11))
+                        .foregroundColor(.lunaTextMuted)
+                    Text("Inspelat \(LunaAge.formatted(date))")
+                        .font(LunaFont.caption())
+                        .foregroundColor(.lunaTextMuted)
+                }
+            }
+
+            Spacer()
+        }
+        .padding(14)
+        .background(Color.lunaAccent.opacity(0.07))
+        .cornerRadius(14)
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.lunaAccentLight.opacity(0.15), lineWidth: 1))
     }
 
     // MARK: - Description

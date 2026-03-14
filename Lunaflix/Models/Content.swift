@@ -22,6 +22,12 @@ struct LunaContent: Identifiable, Hashable {
     let numberOfSeasons: Int?
     let episodes: [Episode]
     let muxPlaybackID: String?
+    let recordingDate: Date?
+
+    /// "Luna var X gammal" — non-nil only when recording date is known
+    var lunaAgeAtRecording: String? {
+        recordingDate.map { LunaAge.ageLabel(at: $0) }
+    }
 
     init(
         id: UUID = UUID(),
@@ -42,7 +48,8 @@ struct LunaContent: Identifiable, Hashable {
         continueProgress: Double = 0,
         numberOfSeasons: Int? = nil,
         episodes: [Episode] = [],
-        muxPlaybackID: String? = nil
+        muxPlaybackID: String? = nil,
+        recordingDate: Date? = nil
     ) {
         self.id = id
         self.title = title
@@ -63,6 +70,7 @@ struct LunaContent: Identifiable, Hashable {
         self.numberOfSeasons = numberOfSeasons
         self.episodes = episodes
         self.muxPlaybackID = muxPlaybackID
+        self.recordingDate = recordingDate
     }
 
     static func == (lhs: LunaContent, rhs: LunaContent) -> Bool { lhs.id == rhs.id }

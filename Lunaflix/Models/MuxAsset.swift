@@ -29,7 +29,7 @@ struct MuxAsset: Identifiable, Decodable {
     var isReady: Bool { status == .ready }
 
     var formattedDuration: String {
-        guard let d = duration else { return "Okänd" }
+        guard let d = duration else { return "Okänd längd" }
         let total = Int(d)
         let h = total / 3600
         let m = (total % 3600) / 60
@@ -39,15 +39,29 @@ struct MuxAsset: Identifiable, Decodable {
         return "\(s) sek"
     }
 
-    // Display title — uses passthrough JSON if set, otherwise falls back to id
+    // MARK: - Passthrough metadata
+
+    private var passthroughMeta: MuxPassthroughMeta? {
+        guard let p = passthrough, let data = p.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(MuxPassthroughMeta.self, from: data)
+    }
+
+    /// Display title — from passthrough JSON or fallback to ID prefix
     var displayTitle: String {
-        if let p = passthrough,
-           let data = p.data(using: .utf8),
-           let dict = try? JSONDecoder().decode([String: String].self, from: data),
-           let title = dict["title"], !title.isEmpty {
-            return title
-        }
-        return "Video \(id.prefix(8))"
+        let t = passthroughMeta?.title ?? ""
+        return t.isEmpty ? "Video \(id.prefix(8))" : t
+    }
+
+    /// Original recording date embedded at upload time
+    var recordingDate: Date? {
+        guard let str = passthroughMeta?.recordingDate else { return nil }
+        return ISO8601DateFormatter().date(from: str)
+    }
+
+    /// "Luna var X månader gammal" — nil if no recording date stored
+    var lunaAgeAtRecording: String? {
+        guard let date = recordingDate else { return nil }
+        return LunaAge.ageLabel(at: date)
     }
 
     enum CodingKeys: String, CodingKey {
@@ -57,6 +71,30 @@ struct MuxAsset: Identifiable, Decodable {
         case createdAt    = "created_at"
     }
 }
+
+// MARK: - Passthrough JSON schema
+
+struct MuxPassthroughMeta: Codable {
+    var title: String?
+    var recordingDate: String?   // ISO8601 UTC
+
+    enum CodingKeys: String, CodingKey {
+        case title
+        case recordingDate = "recordingDate"
+    }
+
+    static func encode(title: String?, recordingDate: Date?) -> String? {
+        var meta = MuxPassthroughMeta()
+        meta.title = title?.isEmpty == false ? title : nil
+        if let date = recordingDate {
+            meta.recordingDate = ISO8601DateFormatter().string(from: date)
+        }
+        guard meta.title != nil || meta.recordingDate != nil else { return nil }
+        return try? String(data: JSONEncoder().encode(meta), encoding: .utf8)
+    }
+}
+
+// MARK: - Asset status
 
 enum MuxAssetStatus: String, Decodable {
     case preparing
@@ -75,15 +113,10 @@ struct MuxPlaybackID: Decodable {
     let policy: String
 }
 
-// MARK: - List Response
+// MARK: - List / single responses
 
-struct MuxAssetListResponse: Decodable {
-    let data: [MuxAsset]
-}
-
-struct MuxAssetResponse: Decodable {
-    let data: MuxAsset
-}
+struct MuxAssetListResponse: Decodable { let data: [MuxAsset] }
+struct MuxAssetResponse:     Decodable { let data: MuxAsset }
 
 // MARK: - Direct Upload
 
@@ -99,9 +132,7 @@ struct MuxDirectUpload: Decodable {
     }
 }
 
-struct MuxUploadResponse: Decodable {
-    let data: MuxDirectUpload
-}
+struct MuxUploadResponse: Decodable { let data: MuxDirectUpload }
 
 // MARK: - Upload Request
 
@@ -120,7 +151,7 @@ struct MuxCreateUploadRequest: Encodable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case corsOrigin = "cors_origin"
+        case corsOrigin       = "cors_origin"
         case newAssetSettings = "new_asset_settings"
     }
 }

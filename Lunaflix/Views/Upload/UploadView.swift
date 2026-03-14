@@ -84,6 +84,13 @@ struct UploadView: View {
                 titleInput
             }
 
+            // Luna age preview card (shown when recording date was extracted)
+            if let date = vm.extractedRecordingDate {
+                lunaAgePreview(date: date)
+            } else if vm.selectedVideoURL != nil && vm.uploadPhase == .idle {
+                noDateCard
+            }
+
             // Upload button
             if vm.selectedVideoURL != nil && vm.uploadPhase == .idle {
                 uploadButton
@@ -207,6 +214,75 @@ struct UploadView: View {
             .cornerRadius(14)
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.07), lineWidth: 1))
         }
+    }
+
+    // MARK: - Luna Age Preview
+
+    private func lunaAgePreview(date: Date) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Inspelningsinformation")
+                .font(LunaFont.caption())
+                .foregroundColor(.lunaTextMuted)
+                .textCase(.uppercase)
+                .tracking(0.6)
+
+            HStack(spacing: 16) {
+                // Icon
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.lunaAccent.opacity(0.15))
+                        .frame(width: 50, height: 50)
+                    Text("🌙")
+                        .font(.system(size: 26))
+                }
+
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 12))
+                            .foregroundColor(.lunaTextMuted)
+                        Text(LunaAge.formatted(date))
+                            .font(LunaFont.body())
+                            .foregroundColor(.lunaTextPrimary)
+                    }
+                    Text(LunaAge.ageLabel(at: date))
+                        .font(LunaFont.caption())
+                        .foregroundColor(.lunaAccentLight)
+                        .fontWeight(.semibold)
+                }
+                Spacer()
+
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(Color(hex: "10B981"))
+            }
+        }
+        .padding(16)
+        .background(Color.lunaAccent.opacity(0.07))
+        .cornerRadius(16)
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.lunaAccentLight.opacity(0.2), lineWidth: 1))
+    }
+
+    private var noDateCard: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "calendar.badge.exclamationmark")
+                .font(.system(size: 18))
+                .foregroundColor(.lunaTextMuted)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Inget inspelningsdatum hittades")
+                    .font(LunaFont.caption())
+                    .fontWeight(.semibold)
+                    .foregroundColor(.lunaTextSecondary)
+                Text("Datumet hittades inte i videofilen. Du kan ange titeln manuellt.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.lunaTextMuted)
+                    .lineSpacing(2)
+            }
+        }
+        .padding(14)
+        .background(Color.lunaCard)
+        .cornerRadius(14)
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.06), lineWidth: 1))
     }
 
     // MARK: - Upload Button

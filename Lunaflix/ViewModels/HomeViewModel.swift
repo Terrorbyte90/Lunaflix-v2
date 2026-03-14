@@ -45,18 +45,22 @@ final class HomeViewModel: ObservableObject {
             guard !readyAssets.isEmpty else { return nil }
 
             let contents: [LunaContent] = readyAssets.map { asset in
-                LunaContent(
+                let recordingDate = asset.recordingDate
+                let year = recordingDate.map { Calendar.current.component(.year, from: $0) }
+                    ?? Calendar.current.component(.year, from: Date())
+                return LunaContent(
                     title: asset.displayTitle,
-                    description: "Video från Mux-biblioteket.",
+                    description: asset.lunaAgeAtRecording ?? "Video från Lunas bibliotek.",
                     type: .movie,
-                    genre: [.action],
+                    genre: [.documentary],
                     rating: 0,
-                    year: Calendar.current.component(.year, from: Date()),
+                    year: year,
                     duration: asset.formattedDuration,
                     ageRating: .all,
                     thumbnailGradient: thumbnailStyle(for: asset.id),
                     heroGradient: thumbnailStyle(for: asset.id),
-                    muxPlaybackID: asset.primaryPlaybackID
+                    muxPlaybackID: asset.primaryPlaybackID,
+                    recordingDate: recordingDate
                 )
             }
 

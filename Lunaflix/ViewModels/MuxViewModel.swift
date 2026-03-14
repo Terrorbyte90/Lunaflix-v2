@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import AVFoundation
 import Combine
 
 // MARK: - Mux ViewModel
@@ -21,6 +22,7 @@ final class MuxViewModel: ObservableObject {
     @Published var videoTitle = ""
     @Published var selectedVideoItem: PhotosPickerItem? = nil
     @Published var selectedVideoURL: URL? = nil
+    @Published var extractedRecordingDate: Date? = nil   // from video metadata
 
     // MARK: Upload phase enum
     enum UploadPhase: Equatable {
@@ -72,14 +74,17 @@ final class MuxViewModel: ObservableObject {
         guard let item else { return }
         uploadPhase = .preparing
         uploadError = nil
+        extractedRecordingDate = nil
 
         do {
-            // Load the video as a URL (copies to temp directory)
             if let movie = try await item.loadTransferable(type: VideoTransferItem.self) {
                 selectedVideoURL = movie.url
-                uploadPhase = .idle   // Ready to upload
+                // Extract creation date from video file metadata
+                extractedRecordingDate = await VideoMetadata.extractCreationDate(from: movie.url)
+                uploadPhase = .idle
             } else {
-                throw NSError(domain: "MuxVM", code: 1, userInfo: [NSLocalizedDescriptionKey: "Kunde inte läsa videofilen."])
+                throw NSError(domain: "MuxVM", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "Kunde inte läsa videofilen."])
             }
         } catch {
             uploadPhase = .failed(error.localizedDescription)
@@ -96,9 +101,12 @@ final class MuxViewModel: ObservableObject {
         uploadProgress = 0
 
         do {
-            // 1. Create direct upload
+            // 1. Create direct upload (include title + recording date in passthrough)
             let title = videoTitle.isEmpty ? nil : videoTitle
-            let upload = try await MuxService.shared.createDirectUpload(title: title)
+            let upload = try await MuxService.shared.createDirectUpload(
+                title: title,
+                recordingDate: extractedRecordingDate
+            )
 
             guard let putURL = URL(string: upload.url) else {
                 throw MuxError.invalidResponse
@@ -116,10 +124,8 @@ final class MuxViewModel: ObservableObject {
             uploadPhase = .processing
             uploadProgress = 1.0
 
-            // Get asset id from upload
             var assetID = upload.assetID
             if assetID == nil {
-                // Poll upload until asset_id is available
                 assetID = try await pollUploadForAssetID(uploadID: upload.id)
             }
 
@@ -129,7 +135,6 @@ final class MuxViewModel: ObservableObject {
 
             let asset = try await MuxService.shared.pollAsset(id: aid)
 
-            // 4. Refresh library
             uploadPhase = .done(asset)
             await loadAssets()
 
@@ -159,33 +164,63 @@ final class MuxViewModel: ObservableObject {
         uploadProgress = 0
         uploadPhase = .idle
         uploadError = nil
+        extractedRecordingDate = nil
     }
 
     // MARK: - Private helpers
 
     private func pollUploadForAssetID(uploadID: String, maxAttempts: Int = 20) async throws -> String? {
-        // The uploads endpoint isn't directly available via the same pattern,
-        // so we wait a few seconds and check the assets list
         for _ in 0..<maxAttempts {
             try await Task.sleep(for: .seconds(2))
-            let req = try await makeGetUploadRequest(id: uploadID)
-            if let assetID = req { return assetID }
+            if let assetID = try await fetchUploadAssetID(uploadID: uploadID) { return assetID }
         }
         return nil
     }
 
-    private func makeGetUploadRequest(id: String) async throws -> String? {
-        // Inline fetch of upload status to get asset_id
+    private func fetchUploadAssetID(_ uploadID: String) async throws -> String? {
         let tid = KeychainService.muxTokenID
         let tsc = KeychainService.muxTokenSecret
-        let url = URL(string: "https://api.mux.com/video/v1/uploads/\(id)")!
+        let url = URL(string: "https://api.mux.com/video/v1/uploads/\(uploadID)")!
         var req = URLRequest(url: url)
         req.httpMethod = "GET"
-        let creds = "\(tid):\(tsc)"
-        req.setValue("Basic \(Data(creds.utf8).base64EncodedString())", forHTTPHeaderField: "Authorization")
+        req.setValue("Basic \(Data("\(tid):\(tsc)".utf8).base64EncodedString())",
+                     forHTTPHeaderField: "Authorization")
         let (data, _) = try await URLSession.shared.data(for: req)
-        let response = try JSONDecoder().decode(MuxUploadResponse.self, from: data)
-        return response.data.assetID
+        return try JSONDecoder().decode(MuxUploadResponse.self, from: data).data.assetID
+    }
+}
+
+// MARK: - Video Metadata Extractor
+
+enum VideoMetadata {
+    /// Reads the creation date embedded in the video file's AVFoundation metadata.
+    /// Covers iPhone MOV, MP4, and most common formats.
+    static func extractCreationDate(from url: URL) async -> Date? {
+        let asset = AVURLAsset(url: url)
+        guard let items = try? await asset.load(.commonMetadata) else { return nil }
+
+        for item in items {
+            guard item.commonKey == .commonKeyCreationDate else { continue }
+
+            // Try native Date value first
+            if let date = try? await item.load(.dateValue) {
+                return date
+            }
+
+            // Fallback: parse ISO8601 string
+            if let str = try? await item.load(.stringValue) {
+                let f = ISO8601DateFormatter()
+                for opts: ISO8601DateFormatter.Options in [
+                    [.withInternetDateTime, .withFractionalSeconds],
+                    .withInternetDateTime,
+                    [.withFullDate]
+                ] {
+                    f.formatOptions = opts
+                    if let date = f.date(from: str) { return date }
+                }
+            }
+        }
+        return nil
     }
 }
 

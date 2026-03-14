@@ -151,9 +151,20 @@ struct WideCard: View {
                     .foregroundColor(.white)
                     .lineLimit(1)
 
-                Text(content.genreString)
-                    .font(LunaFont.caption())
-                    .foregroundColor(.lunaTextSecondary)
+                // Show Luna's age at recording for Mux library clips
+                if let date = content.recordingDate {
+                    HStack(spacing: 4) {
+                        Text("🌙")
+                            .font(.system(size: 10))
+                        Text(LunaAge.ageShort(at: date))
+                            .font(LunaFont.tag())
+                            .foregroundColor(.lunaAccentLight)
+                    }
+                } else {
+                    Text(content.genreString)
+                        .font(LunaFont.caption())
+                        .foregroundColor(.lunaTextSecondary)
+                }
             }
             .padding(12)
 

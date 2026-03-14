@@ -79,12 +79,8 @@ actor MuxService {
 
     // MARK: - Create Direct Upload
 
-    func createDirectUpload(title: String?) async throws -> MuxDirectUpload {
-        var passthrough: String? = nil
-        if let title {
-            let dict = ["title": title]
-            passthrough = String(data: try JSONEncoder().encode(dict), encoding: .utf8)
-        }
+    func createDirectUpload(title: String?, recordingDate: Date? = nil) async throws -> MuxDirectUpload {
+        let passthrough = MuxPassthroughMeta.encode(title: title, recordingDate: recordingDate)
         let body = MuxCreateUploadRequest(
             newAssetSettings: .init(
                 playbackPolicy: ["public"],
