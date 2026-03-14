@@ -6,7 +6,11 @@ struct ContentDetailView: View {
     @State private var showPlayer = false
     @State private var isInWatchlist = false
     @State private var selectedSeason = 1
-    @State private var headerVisible = true
+    @State private var selectedNestedContent: LunaContent? = nil
+
+    private var filteredEpisodes: [Episode] {
+        content.episodes.filter { $0.seasonNumber == selectedSeason }
+    }
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -14,94 +18,111 @@ struct ContentDetailView: View {
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
-                    // Hero image
                     heroSection
-                        .frame(height: 360)
+                        .frame(height: 380)
 
-                    // Content info
                     contentInfo
                         .padding(.horizontal, 16)
+                        .padding(.top, 4)
 
-                    // Action buttons
                     actionButtons
                         .padding(.horizontal, 16)
-                        .padding(.top, 20)
+                        .padding(.top, 18)
 
-                    // Stats row
                     statsRow
                         .padding(.horizontal, 16)
-                        .padding(.top, 20)
+                        .padding(.top, 18)
 
-                    // Description
                     descriptionSection
                         .padding(.horizontal, 16)
                         .padding(.top, 20)
 
-                    // Episodes (for series)
                     if content.type == .series && !content.episodes.isEmpty {
                         episodesSection
-                            .padding(.top, 20)
+                            .padding(.top, 24)
                     }
 
-                    // Similar content
                     similarSection
-                        .padding(.top, 20)
-                        .padding(.bottom, 120)
+                        .padding(.top, 24)
+                        .padding(.bottom, 60)
                 }
             }
 
-            // Top navigation
             topNav
         }
         .ignoresSafeArea(edges: .top)
         .fullScreenCover(isPresented: $showPlayer) {
             PlayerView(content: content)
         }
+        .sheet(item: $selectedNestedContent) { item in
+            ContentDetailView(content: item)
+        }
     }
 
     // MARK: - Hero
 
     private var heroSection: some View {
-        ZStack(alignment: .bottom) {
+        ZStack {
+            // Background gradient
             content.heroGradient.gradient
                 .ignoresSafeArea(edges: .top)
 
-            // Decorative elements
             GeometryReader { geo in
-                Circle()
-                    .fill(content.heroGradient.accentColor.opacity(0.2))
-                    .frame(width: geo.size.width * 0.8)
-                    .blur(radius: 50)
-                    .offset(x: geo.size.width * 0.1, y: -50)
+                let w = geo.size.width
 
-                // Large watermark letter
+                // Glow blobs
+                Circle()
+                    .fill(content.heroGradient.accentColor.opacity(0.22))
+                    .frame(width: w * 0.8)
+                    .blur(radius: 50)
+                    .offset(x: w * 0.12, y: -40)
+                    .allowsHitTesting(false)
+
+                // Watermark letter
                 Text(content.title.prefix(1))
-                    .font(.system(size: 220, weight: .black, design: .rounded))
-                    .foregroundColor(.white.opacity(0.06))
-                    .offset(x: geo.size.width * 0.3, y: -20)
+                    .font(.system(size: 210, weight: .black, design: .rounded))
+                    .foregroundColor(.white.opacity(0.055))
+                    .offset(x: w * 0.28, y: -10)
+                    .allowsHitTesting(false)
             }
 
-            // Play button overlay
-            Button { showPlayer = true } label: {
+            // Bottom gradient
+            VStack {
+                Spacer()
+                LinearGradient(
+                    colors: [
+                        .clear,
+                        Color.lunaBackground.opacity(0.4),
+                        Color.lunaBackground.opacity(0.85),
+                        Color.lunaBackground
+                    ],
+                    startPoint: .init(x: 0, y: 0.2),
+                    endPoint: .bottom
+                )
+                .frame(height: 220)
+            }
+
+            // Centered play button
+            Button {
+                LunaHaptic.medium()
+                showPlayer = true
+            } label: {
                 ZStack {
                     Circle()
                         .fill(.ultraThinMaterial)
-                        .frame(width: 70, height: 70)
+                        .frame(width: 72, height: 72)
+                        .overlay(
+                            Circle()
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                        )
                     Image(systemName: "play.fill")
                         .font(.system(size: 28, weight: .bold))
                         .foregroundColor(.white)
-                        .offset(x: 3)
+                        .offset(x: 2)
                 }
             }
-            .lunaGlow()
-            .offset(y: -40)
-
-            // Gradient overlay
-            LinearGradient(
-                colors: [.clear, Color.lunaBackground.opacity(0.5), Color.lunaBackground],
-                startPoint: .init(x: 0, y: 0.3),
-                endPoint: .bottom
-            )
+            .buttonStyle(LunaPressStyle(scale: 0.92))
+            .lunaGlow(color: .white, radius: 12)
         }
     }
 
@@ -109,30 +130,17 @@ struct ContentDetailView: View {
 
     private var contentInfo: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Type + New badge
+            // Type + badges
             HStack(spacing: 8) {
                 Label(content.type.rawValue, systemImage: content.type.icon)
                     .font(LunaFont.caption())
                     .foregroundColor(content.heroGradient.accentColor)
 
                 if content.isNew {
-                    Text("NYTT")
-                        .font(LunaFont.tag())
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.lunaAccent)
-                        .cornerRadius(4)
+                    badgeView("NYTT", bg: .lunaAccent, fg: .white)
                 }
-
                 if content.isTrending {
-                    Text("TRENDING")
-                        .font(LunaFont.tag())
-                        .foregroundColor(.black)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.lunaGold)
-                        .cornerRadius(4)
+                    badgeView("TRENDING", bg: .lunaGold, fg: .black)
                 }
             }
 
@@ -141,6 +149,7 @@ struct ContentDetailView: View {
                 .font(LunaFont.hero())
                 .foregroundColor(.white)
                 .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
 
             // Subtitle
             if !content.subtitle.isEmpty {
@@ -149,27 +158,30 @@ struct ContentDetailView: View {
                     .foregroundColor(.lunaTextSecondary)
             }
 
-            // Meta
-            HStack(spacing: 10) {
+            // Meta row
+            HStack(spacing: 8) {
                 HStack(spacing: 4) {
                     Image(systemName: "star.fill")
                         .font(.system(size: 11))
                         .foregroundColor(.lunaGold)
                     Text(content.formattedRating)
-                        .font(LunaFont.body())
-                        .fontWeight(.semibold)
+                        .font(LunaFont.mono(13))
                         .foregroundColor(.lunaGold)
                 }
 
-                Text("•").foregroundColor(.lunaTextMuted)
-                Text("\(content.year)").font(LunaFont.body()).foregroundColor(.lunaTextSecondary)
+                Text("·").foregroundColor(.lunaTextMuted)
+                Text("\(content.year)")
+                    .font(LunaFont.body())
+                    .foregroundColor(.lunaTextSecondary)
 
-                Text("•").foregroundColor(.lunaTextMuted)
-                Text(content.duration).font(LunaFont.body()).foregroundColor(.lunaTextSecondary)
+                Text("·").foregroundColor(.lunaTextMuted)
+                Text(content.duration)
+                    .font(LunaFont.body())
+                    .foregroundColor(.lunaTextSecondary)
 
-                Text("•").foregroundColor(.lunaTextMuted)
+                Text("·").foregroundColor(.lunaTextMuted)
                 Text(content.ageRating.label)
-                    .font(LunaFont.caption())
+                    .font(LunaFont.tag())
                     .foregroundColor(.white)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -178,7 +190,7 @@ struct ContentDetailView: View {
                     .overlay(RoundedRectangle(cornerRadius: 4).stroke(content.ageRating.color.opacity(0.4), lineWidth: 1))
             }
 
-            // Genres
+            // Genre chips
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
                     ForEach(content.genre, id: \.rawValue) { genre in
@@ -196,35 +208,50 @@ struct ContentDetailView: View {
         }
     }
 
+    private func badgeView(_ text: String, bg: Color, fg: Color) -> some View {
+        Text(text)
+            .font(LunaFont.tag())
+            .foregroundColor(fg)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(bg)
+            .cornerRadius(4)
+    }
+
     // MARK: - Action Buttons
 
     private var actionButtons: some View {
         HStack(spacing: 12) {
-            // Primary play
-            Button { showPlayer = true } label: {
+            // Primary: Play / Continue
+            Button {
+                LunaHaptic.medium()
+                showPlayer = true
+            } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: content.isContinuing ? "play.fill" : "play.fill")
+                    Image(systemName: content.isContinuing ? "arrow.clockwise" : "play.fill")
                     Text(content.isContinuing ? "Fortsätt titta" : "Spela upp")
+                        .fontWeight(.bold)
                 }
                 .font(LunaFont.body())
-                .fontWeight(.bold)
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
                 .background(LinearGradient.lunaAccentGradient)
                 .cornerRadius(14)
-                .shadow(color: Color.lunaAccent.opacity(0.4), radius: 12, x: 0, y: 4)
+                .shadow(color: Color.lunaAccent.opacity(0.45), radius: 14, x: 0, y: 5)
             }
+            .buttonStyle(LunaPressStyle(scale: 0.97))
 
             // Watchlist
             Button {
+                LunaHaptic.light()
                 withAnimation(.lunaSpring) {
                     isInWatchlist.toggle()
                 }
             } label: {
-                VStack(spacing: 4) {
+                VStack(spacing: 5) {
                     Image(systemName: isInWatchlist ? "checkmark" : "plus")
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.system(size: 17, weight: .bold))
                         .foregroundColor(isInWatchlist ? .lunaAccentLight : .white)
                     Text(isInWatchlist ? "Sparad" : "Min lista")
                         .font(LunaFont.tag())
@@ -236,16 +263,21 @@ struct ContentDetailView: View {
                 .cornerRadius(14)
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
-                        .stroke(isInWatchlist ? Color.lunaAccentLight.opacity(0.4) : Color.white.opacity(0.08), lineWidth: 1)
+                        .stroke(
+                            isInWatchlist ? Color.lunaAccentLight.opacity(0.4) : Color.white.opacity(0.08),
+                            lineWidth: 1
+                        )
                 )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(LunaPressStyle())
 
             // Download
-            Button {} label: {
-                VStack(spacing: 4) {
+            Button {
+                LunaHaptic.light()
+            } label: {
+                VStack(spacing: 5) {
                     Image(systemName: "arrow.down.circle")
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.system(size: 17, weight: .bold))
                         .foregroundColor(.white)
                     Text("Ladda ner")
                         .font(LunaFont.tag())
@@ -260,7 +292,7 @@ struct ContentDetailView: View {
                         .stroke(Color.white.opacity(0.08), lineWidth: 1)
                 )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(LunaPressStyle())
         }
     }
 
@@ -268,11 +300,30 @@ struct ContentDetailView: View {
 
     private var statsRow: some View {
         HStack(spacing: 0) {
-            statItem(value: content.formattedRating, label: "Betyg", icon: "star.fill", color: .lunaGold)
-            Divider().frame(height: 30).background(Color.white.opacity(0.1))
-            statItem(value: "\(content.year)", label: "År", icon: "calendar", color: .lunaAccentLight)
-            Divider().frame(height: 30).background(Color.white.opacity(0.1))
-            statItem(value: content.type.rawValue, label: "Typ", icon: content.type.icon, color: .lunaCyan)
+            statItem(
+                value: content.formattedRating,
+                label: "Betyg",
+                icon: "star.fill",
+                color: .lunaGold
+            )
+            Rectangle()
+                .fill(Color.white.opacity(0.08))
+                .frame(width: 1, height: 36)
+            statItem(
+                value: "\(content.year)",
+                label: "År",
+                icon: "calendar",
+                color: .lunaAccentLight
+            )
+            Rectangle()
+                .fill(Color.white.opacity(0.08))
+                .frame(width: 1, height: 36)
+            statItem(
+                value: content.type.rawValue,
+                label: "Typ",
+                icon: content.type.icon,
+                color: .lunaCyan
+            )
         }
         .padding(.vertical, 16)
         .background(Color.lunaCard)
@@ -283,11 +334,10 @@ struct ContentDetailView: View {
     private func statItem(value: String, label: String, icon: String, color: Color) -> some View {
         VStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.system(size: 16, weight: .bold))
+                .font(.system(size: 15, weight: .bold))
                 .foregroundColor(color)
             Text(value)
-                .font(LunaFont.body())
-                .fontWeight(.bold)
+                .font(LunaFont.mono(14))
                 .foregroundColor(.white)
             Text(label)
                 .font(LunaFont.caption())
@@ -307,7 +357,7 @@ struct ContentDetailView: View {
             Text(content.description)
                 .font(LunaFont.body())
                 .foregroundColor(.lunaTextSecondary)
-                .lineSpacing(4)
+                .lineSpacing(5)
         }
     }
 
@@ -320,10 +370,20 @@ struct ContentDetailView: View {
                     .font(LunaFont.title3())
                     .foregroundColor(.lunaTextPrimary)
                 Spacer()
+
                 if let seasons = content.numberOfSeasons, seasons > 1 {
                     Menu {
                         ForEach(1...seasons, id: \.self) { s in
-                            Button("Säsong \(s)") { selectedSeason = s }
+                            Button {
+                                withAnimation(.lunaSnappy) { selectedSeason = s }
+                            } label: {
+                                HStack {
+                                    Text("Säsong \(s)")
+                                    if selectedSeason == s {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
                         }
                     } label: {
                         HStack(spacing: 4) {
@@ -338,13 +398,16 @@ struct ContentDetailView: View {
                         .padding(.vertical, 6)
                         .background(Color.lunaCard)
                         .cornerRadius(8)
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.lunaAccentLight.opacity(0.3), lineWidth: 1))
                     }
                 }
             }
             .padding(.horizontal, 16)
 
-            ForEach(content.episodes) { episode in
+            let episodes = filteredEpisodes.isEmpty ? content.episodes : filteredEpisodes
+            ForEach(episodes) { episode in
                 EpisodeRow(episode: episode) {
+                    LunaHaptic.medium()
                     showPlayer = true
                 }
             }
@@ -354,21 +417,27 @@ struct ContentDetailView: View {
     // MARK: - Similar
 
     private var similarSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let similar = MockData.allContent
+            .filter { $0.id != content.id }
+            .filter { !Set($0.genre).isDisjoint(with: Set(content.genre)) }
+            .prefix(8)
+
+        return VStack(alignment: .leading, spacing: 12) {
             Text("Du kanske också gillar")
                 .font(LunaFont.title3())
                 .foregroundColor(.lunaTextPrimary)
                 .padding(.horizontal, 16)
 
-            let similar = MockData.allContent
-                .filter { $0.id != content.id }
-                .filter { !Set($0.genre).isDisjoint(with: Set(content.genre)) }
-                .prefix(6)
-
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
                     ForEach(Array(similar)) { item in
-                        PosterCard(content: item)
+                        Button {
+                            LunaHaptic.light()
+                            selectedNestedContent = item
+                        } label: {
+                            PosterCard(content: item)
+                        }
+                        .buttonStyle(LunaPressStyle())
                     }
                 }
                 .padding(.horizontal, 16)
@@ -380,30 +449,41 @@ struct ContentDetailView: View {
 
     private var topNav: some View {
         HStack {
-            Button { dismiss() } label: {
+            Button {
+                dismiss()
+            } label: {
                 ZStack {
                     Circle()
                         .fill(.ultraThinMaterial)
-                        .frame(width: 36, height: 36)
+                        .frame(width: 38, height: 38)
+                        .overlay(Circle().stroke(Color.white.opacity(0.1), lineWidth: 1))
                     Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 13, weight: .bold))
                         .foregroundColor(.white)
                 }
             }
+            .buttonStyle(LunaPressStyle())
+
             Spacer()
-            Button {} label: {
+
+            Button {
+                LunaHaptic.light()
+                // Share sheet would go here
+            } label: {
                 ZStack {
                     Circle()
                         .fill(.ultraThinMaterial)
-                        .frame(width: 36, height: 36)
+                        .frame(width: 38, height: 38)
+                        .overlay(Circle().stroke(Color.white.opacity(0.1), lineWidth: 1))
                     Image(systemName: "square.and.arrow.up")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.white)
                 }
             }
+            .buttonStyle(LunaPressStyle())
         }
         .padding(.horizontal, 16)
-        .padding(.top, 54)
+        .padding(.top, 56)
     }
 }
 
@@ -420,25 +500,31 @@ struct EpisodeRow: View {
                 ZStack {
                     Rectangle()
                         .fill(episode.thumbnailStyle.gradient)
-                        .frame(width: 110, height: 65)
-                        .cornerRadius(8)
+                        .frame(width: 114, height: 66)
+                        .cornerRadius(9)
 
-                    Image(systemName: "play.fill")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(.white.opacity(0.8))
+                    // Play icon with slight blur backdrop
+                    ZStack {
+                        Circle()
+                            .fill(.black.opacity(0.3))
+                            .frame(width: 32, height: 32)
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.white)
+                            .offset(x: 1)
+                    }
 
                     if episode.progress > 0 {
                         VStack {
                             Spacer()
-                            ProgressView(value: episode.progress)
-                                .progressViewStyle(LinearProgressViewStyle(tint: .lunaAccentLight))
-                                .scaleEffect(y: 1.5)
-                                .padding(.horizontal, 4)
-                                .padding(.bottom, 2)
+                            LunaProgressBar(progress: episode.progress, height: 3)
+                                .padding(.horizontal, 6)
+                                .padding(.bottom, 4)
                         }
                     }
                 }
-                .frame(width: 110, height: 65)
+                .frame(width: 114, height: 66)
+                .clipShape(RoundedRectangle(cornerRadius: 9))
 
                 // Info
                 VStack(alignment: .leading, spacing: 4) {
@@ -452,9 +538,14 @@ struct EpisodeRow: View {
                         .foregroundColor(.lunaTextMuted)
                         .lineLimit(2)
 
-                    Text(episode.duration)
-                        .font(LunaFont.caption())
-                        .foregroundColor(.lunaTextMuted)
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .font(.system(size: 9))
+                            .foregroundColor(.lunaTextMuted)
+                        Text(episode.duration)
+                            .font(LunaFont.caption())
+                            .foregroundColor(.lunaTextMuted)
+                    }
                 }
 
                 Spacer()
@@ -462,11 +553,14 @@ struct EpisodeRow: View {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 16))
                     .foregroundColor(.lunaTextMuted)
+                    .frame(width: 30, height: 30)
+                    .contentShape(Rectangle())
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(LunaPressStyle(scale: 0.98))
     }
 }
 

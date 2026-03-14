@@ -9,63 +9,62 @@ struct PlayerView: View {
     @State private var progress: Double = 0.15
     @State private var isMuted = false
     @State private var showSettings = false
-    @GestureState private var isDragging = false
+    @State private var isScrubbing = false
 
-    private let controlHideDelay: TimeInterval = 3
+    // Cancellable auto-hide task
+    @State private var hideTask: Task<Void, Never>? = nil
+
+    private let controlHideDelay: TimeInterval = 3.5
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            // Video background (gradient placeholder)
-            GeometryReader { geo in
-                ZStack {
-                    content.heroGradient.gradient
-                        .ignoresSafeArea()
+            // Video background (gradient stand-in)
+            ZStack {
+                content.heroGradient.gradient
+                    .ignoresSafeArea()
 
-                    // Simulated video content
+                GeometryReader { geo in
                     Circle()
-                        .fill(content.heroGradient.accentColor.opacity(0.15))
-                        .frame(width: geo.size.width * 0.8)
+                        .fill(content.heroGradient.accentColor.opacity(0.18))
+                        .frame(width: geo.size.width * 0.9)
                         .blur(radius: 80)
                         .position(x: geo.size.width * 0.6, y: geo.size.height * 0.4)
-
-                    // Subtle overlay
-                    Color.black.opacity(showControls ? 0.5 : 0.1)
-                        .ignoresSafeArea()
-                        .animation(.easeInOut(duration: 0.25), value: showControls)
                 }
+
+                // Dimming overlay for readability
+                Color.black
+                    .opacity(showControls ? 0.55 : 0.08)
+                    .ignoresSafeArea()
+                    .animation(.easeInOut(duration: 0.3), value: showControls)
             }
 
             // Controls overlay
-            if showControls {
-                controls
-                    .transition(.opacity)
-            }
+            controls
+                .opacity(showControls ? 1 : 0)
+                .animation(.easeInOut(duration: 0.25), value: showControls)
+                .allowsHitTesting(showControls)
 
-            // Loading indicator when not playing
-            if !isPlaying {
-                Circle()
-                    .fill(.ultraThinMaterial)
-                    .frame(width: 70, height: 70)
-                    .overlay(
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 28))
-                            .foregroundColor(.white)
-                            .offset(x: 3)
-                    )
+            // Paused indicator (only when paused AND controls hidden)
+            if !isPlaying && !showControls {
+                Image(systemName: "pause.fill")
+                    .font(.system(size: 40))
+                    .foregroundColor(.white.opacity(0.3))
+                    .transition(.opacity)
             }
         }
         .statusBarHidden()
+        .contentShape(Rectangle())
         .onTapGesture {
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(.easeInOut(duration: 0.22)) {
                 showControls.toggle()
             }
             if showControls {
-                autoHideControls()
+                scheduleHide()
             }
         }
-        .onAppear { autoHideControls() }
+        .onAppear { scheduleHide() }
         .sheet(isPresented: $showSettings) {
             PlayerSettingsSheet()
         }
@@ -82,15 +81,18 @@ struct PlayerView: View {
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(LunaPressStyle())
 
                 Spacer()
 
-                VStack(spacing: 2) {
+                VStack(spacing: 3) {
                     Text(content.title)
                         .font(LunaFont.body())
                         .fontWeight(.bold)
                         .foregroundColor(.white)
+                        .lineLimit(1)
                     if content.type == .series {
                         Text("S1 • E3 • Avslöjandet")
                             .font(LunaFont.caption())
@@ -100,91 +102,131 @@ struct PlayerView: View {
 
                 Spacer()
 
-                HStack(spacing: 16) {
-                    Button { isMuted.toggle() } label: {
+                HStack(spacing: 12) {
+                    Button {
+                        LunaHaptic.light()
+                        isMuted.toggle()
+                    } label: {
                         Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                            .font(.system(size: 18, weight: .medium))
+                            .font(.system(size: 18))
                             .foregroundColor(.white)
                             .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
+                    .buttonStyle(LunaPressStyle())
 
-                    Button { showSettings = true } label: {
+                    Button {
+                        showSettings = true
+                    } label: {
                         Image(systemName: "ellipsis")
                             .font(.system(size: 20, weight: .bold))
                             .foregroundColor(.white)
                             .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
+                    .buttonStyle(LunaPressStyle())
                 }
             }
-            .padding(.horizontal, 8)
-            .padding(.top, 54)
+            .padding(.horizontal, 12)
+            .padding(.top, 56)
 
             Spacer()
 
             // Center play controls
-            HStack(spacing: 50) {
+            HStack(spacing: 52) {
                 Button {
+                    LunaHaptic.light()
                     progress = max(0, progress - 0.1)
+                    rescheduleHide()
                 } label: {
                     Image(systemName: "gobackward.10")
-                        .font(.system(size: 30, weight: .medium))
+                        .font(.system(size: 32, weight: .medium))
                         .foregroundColor(.white)
+                        .frame(width: 56, height: 56)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(LunaPressStyle())
 
                 Button {
-                    withAnimation(.lunaSnappy) {
-                        isPlaying.toggle()
-                    }
-                    if isPlaying { autoHideControls() }
+                    LunaHaptic.medium()
+                    withAnimation(.lunaSnappy) { isPlaying.toggle() }
+                    if isPlaying { rescheduleHide() }
                 } label: {
-                    Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: 44, weight: .bold))
-                        .foregroundColor(.white)
+                    ZStack {
+                        Circle()
+                            .fill(.white.opacity(0.15))
+                            .frame(width: 70, height: 70)
+                        Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                            .font(.system(size: 30, weight: .bold))
+                            .foregroundColor(.white)
+                            .offset(x: isPlaying ? 0 : 2)
+                    }
                 }
+                .buttonStyle(LunaPressStyle(scale: 0.92))
 
                 Button {
+                    LunaHaptic.light()
                     progress = min(1, progress + 0.1)
+                    rescheduleHide()
                 } label: {
                     Image(systemName: "goforward.10")
-                        .font(.system(size: 30, weight: .medium))
+                        .font(.system(size: 32, weight: .medium))
                         .foregroundColor(.white)
+                        .frame(width: 56, height: 56)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(LunaPressStyle())
             }
 
             Spacer()
 
-            // Bottom: progress bar + time
-            VStack(spacing: 12) {
+            // Bottom: seekbar + time + actions
+            VStack(spacing: 14) {
                 // Seekbar
-                VStack(spacing: 4) {
+                VStack(spacing: 6) {
                     GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            // Background track
-                            Capsule()
-                                .fill(Color.white.opacity(0.2))
-                                .frame(height: 4)
+                        let totalWidth = geo.size.width
 
-                            // Buffered (slightly lighter)
+                        ZStack(alignment: .leading) {
+                            // Track background
                             Capsule()
-                                .fill(Color.white.opacity(0.35))
-                                .frame(width: geo.size.width * min(progress + 0.15, 1), height: 4)
+                                .fill(Color.white.opacity(0.15))
+                                .frame(height: isScrubbing ? 6 : 4)
+
+                            // Buffered
+                            Capsule()
+                                .fill(Color.white.opacity(0.3))
+                                .frame(width: totalWidth * min(progress + 0.15, 1), height: isScrubbing ? 6 : 4)
 
                             // Played
                             Capsule()
                                 .fill(LinearGradient.lunaAccentGradient)
-                                .frame(width: geo.size.width * progress, height: 4)
+                                .frame(width: totalWidth * progress, height: isScrubbing ? 6 : 4)
 
-                            // Scrubber
+                            // Scrubber thumb
                             Circle()
                                 .fill(Color.white)
-                                .frame(width: 16, height: 16)
-                                .shadow(color: .black.opacity(0.3), radius: 4)
-                                .offset(x: geo.size.width * progress - 8)
+                                .frame(
+                                    width: isScrubbing ? 20 : 14,
+                                    height: isScrubbing ? 20 : 14
+                                )
+                                .shadow(color: .black.opacity(0.35), radius: 4)
+                                .offset(x: totalWidth * progress - (isScrubbing ? 10 : 7))
                         }
+                        .animation(.lunaSnappy, value: isScrubbing)
                         .gesture(
                             DragGesture(minimumDistance: 0)
                                 .onChanged { val in
-                                    progress = max(0, min(1, val.location.x / geo.size.width))
+                                    if !isScrubbing {
+                                        isScrubbing = true
+                                        LunaHaptic.light()
+                                        hideTask?.cancel()
+                                    }
+                                    progress = max(0, min(1, val.location.x / totalWidth))
+                                }
+                                .onEnded { _ in
+                                    isScrubbing = false
+                                    rescheduleHide()
                                 }
                         )
                     }
@@ -193,86 +235,101 @@ struct PlayerView: View {
                     // Time labels
                     HStack {
                         Text(timeString(from: progress * totalSeconds))
-                            .font(LunaFont.caption())
+                            .font(LunaFont.mono(11))
                             .foregroundColor(.lunaTextSecondary)
                         Spacer()
-                        Text(timeString(from: totalSeconds))
-                            .font(LunaFont.caption())
+                        Text("-" + timeString(from: (1 - progress) * totalSeconds))
+                            .font(LunaFont.mono(11))
                             .foregroundColor(.lunaTextSecondary)
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 20)
 
-                // Bottom actions
+                // Bottom action row
                 HStack {
-                    // Subtitle button
                     Button {} label: {
-                        Label("Textning", systemImage: "captions.bubble")
+                        Label("Textning", systemImage: "captions.bubble.fill")
                             .font(LunaFont.caption())
-                            .foregroundColor(.white.opacity(0.7))
+                            .foregroundColor(.white.opacity(0.75))
                     }
+                    .buttonStyle(LunaPressStyle())
+
                     Spacer()
 
-                    // Next episode
                     if content.type == .series {
-                        Button {} label: {
-                            HStack(spacing: 4) {
-                                Text("Nästa avsnitt")
+                        Button {
+                            LunaHaptic.light()
+                        } label: {
+                            HStack(spacing: 5) {
+                                Text("Nästa")
                                     .font(LunaFont.caption())
                                 Image(systemName: "forward.end.fill")
                                     .font(.system(size: 12))
                             }
-                            .foregroundColor(.white.opacity(0.7))
+                            .foregroundColor(.white.opacity(0.75))
                         }
+                        .buttonStyle(LunaPressStyle())
                     }
 
                     Spacer()
 
-                    // Airplay
                     Button {} label: {
                         Label("AirPlay", systemImage: "airplayvideo")
                             .font(LunaFont.caption())
-                            .foregroundColor(.white.opacity(0.7))
+                            .foregroundColor(.white.opacity(0.75))
                     }
+                    .buttonStyle(LunaPressStyle())
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 20)
             }
-            .padding(.bottom, 44)
+            .padding(.bottom, 50)
         }
     }
 
+    // MARK: - Helpers
+
     private var totalSeconds: Double {
-        // Parse "1t 45min" -> seconds
         if content.duration.contains("t") {
             let parts = content.duration.components(separatedBy: "t ")
             let hours = Double(parts[0].trimmingCharacters(in: .whitespaces)) ?? 0
-            let minPart = parts.last?.replacingOccurrences(of: "min", with: "").trimmingCharacters(in: .whitespaces)
-            let mins = Double(minPart ?? "0") ?? 0
+            let minStr = parts.last?.replacingOccurrences(of: "min", with: "").trimmingCharacters(in: .whitespaces)
+            let mins = Double(minStr ?? "0") ?? 0
             return (hours * 60 + mins) * 60
         }
         return 5400
     }
 
     private func timeString(from seconds: Double) -> String {
-        let h = Int(seconds) / 3600
-        let m = (Int(seconds) % 3600) / 60
-        let s = Int(seconds) % 60
-        if h > 0 {
-            return String(format: "%d:%02d:%02d", h, m, s)
-        }
-        return String(format: "%d:%02d", m, s)
+        let s = max(0, seconds)
+        let h = Int(s) / 3600
+        let m = (Int(s) % 3600) / 60
+        let sec = Int(s) % 60
+        return h > 0
+            ? String(format: "%d:%02d:%02d", h, m, sec)
+            : String(format: "%d:%02d", m, sec)
     }
 
-    private func autoHideControls() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + controlHideDelay) {
-            withAnimation(.easeInOut(duration: 0.4)) {
-                if isPlaying { showControls = false }
+    private func scheduleHide() {
+        hideTask?.cancel()
+        hideTask = Task {
+            try? await Task.sleep(for: .seconds(controlHideDelay))
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                if isPlaying && !isScrubbing {
+                    withAnimation(.easeInOut(duration: 0.4)) {
+                        showControls = false
+                    }
+                }
             }
         }
     }
+
+    private func rescheduleHide() {
+        if showControls { scheduleHide() }
+    }
 }
 
-// MARK: - Settings Sheet
+// MARK: - Player Settings Sheet
 
 struct PlayerSettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
@@ -286,33 +343,38 @@ struct PlayerSettingsSheet: View {
     @State private var selectedSub = "Av"
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 Color.lunaSurface.ignoresSafeArea()
+
                 List {
-                    settingsSection(title: "Kvalitet", options: qualities, selected: $selectedQuality)
-                    settingsSection(title: "Ljud", options: languages, selected: $selectedLang)
-                    settingsSection(title: "Textning", options: subtitles, selected: $selectedSub)
+                    settingsSection("Kvalitet", options: qualities, selected: $selectedQuality)
+                    settingsSection("Ljud", options: languages, selected: $selectedLang)
+                    settingsSection("Textning", options: subtitles, selected: $selectedSub)
                 }
                 .scrollContentBackground(.hidden)
                 .background(Color.lunaSurface)
             }
-            .navigationTitle("Inställningar")
+            .navigationTitle("Uppspelning")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Klar") { dismiss() }
                         .foregroundColor(.lunaAccentLight)
+                        .fontWeight(.semibold)
                 }
             }
         }
         .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
     }
 
-    private func settingsSection(title: String, options: [String], selected: Binding<String>) -> some View {
+    @ViewBuilder
+    private func settingsSection(_ title: String, options: [String], selected: Binding<String>) -> some View {
         Section(title) {
             ForEach(options, id: \.self) { opt in
                 Button {
+                    LunaHaptic.selection()
                     selected.wrappedValue = opt
                 } label: {
                     HStack {
@@ -321,6 +383,7 @@ struct PlayerSettingsSheet: View {
                         Spacer()
                         if selected.wrappedValue == opt {
                             Image(systemName: "checkmark")
+                                .font(.system(size: 13, weight: .semibold))
                                 .foregroundColor(.lunaAccentLight)
                         }
                     }

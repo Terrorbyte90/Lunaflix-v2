@@ -6,12 +6,9 @@ struct HeroCarouselView: View {
     let onSelect: (Int) -> Void
     let onTap: (LunaContent) -> Void
 
-    @State private var dragOffset: CGFloat = 0
-    @State private var animating = false
-
     var body: some View {
         ZStack(alignment: .bottom) {
-            // Hero cards with paging
+            // Hero pages
             TabView(selection: $currentIndex) {
                 ForEach(Array(contents.enumerated()), id: \.element.id) { index, content in
                     HeroCard(content: content, onTap: { onTap(content) })
@@ -19,17 +16,18 @@ struct HeroCarouselView: View {
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
-            .onChange(of: currentIndex) { _, newVal in
+            .onChange(of: currentIndex) { oldVal, newVal in
+                guard oldVal != newVal else { return }
+                LunaHaptic.light()
                 onSelect(newVal)
             }
 
-            // Bottom gradient + info overlay
-            VStack(spacing: 0) {
-                Spacer()
-
-                if let hero = contents[safe: currentIndex] {
-                    heroInfoOverlay(hero)
-                }
+            // Info overlay (slides with content change)
+            if let hero = contents[safe: currentIndex] {
+                heroInfoOverlay(hero)
+                    .transition(.opacity)
+                    .id(hero.id)
+                    .animation(.lunaSmooth, value: currentIndex)
             }
         }
         .clipped()
@@ -37,10 +35,10 @@ struct HeroCarouselView: View {
 
     @ViewBuilder
     private func heroInfoOverlay(_ content: LunaContent) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             // Genre chips
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     ForEach(content.genre, id: \.rawValue) { genre in
                         Text(genre.displayName)
                             .font(LunaFont.tag())
@@ -55,30 +53,36 @@ struct HeroCarouselView: View {
                             )
                     }
                 }
+                .padding(.horizontal, 16)
             }
-            .padding(.leading, 16)
 
             // Title
             Text(content.title)
                 .font(LunaFont.hero())
                 .foregroundColor(.white)
-                .shadow(color: .black.opacity(0.5), radius: 8)
+                .shadow(color: .black.opacity(0.6), radius: 10, x: 0, y: 2)
                 .padding(.horizontal, 16)
 
-            // Meta info
-            HStack(spacing: 12) {
-                Text(String(format: "%.1f", content.rating))
-                    .font(LunaFont.caption())
-                    .foregroundColor(.lunaGold)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Color.lunaGold.opacity(0.15))
-                    .cornerRadius(6)
-                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.lunaGold.opacity(0.3), lineWidth: 1))
+            // Meta info row
+            HStack(spacing: 8) {
+                // Rating badge
+                HStack(spacing: 4) {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 10))
+                        .foregroundColor(.lunaGold)
+                    Text(String(format: "%.1f", content.rating))
+                        .font(LunaFont.mono(12))
+                        .foregroundColor(.lunaGold)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.lunaGold.opacity(0.12))
+                .cornerRadius(6)
+                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.lunaGold.opacity(0.25), lineWidth: 1))
 
-                Image(systemName: "star.fill")
-                    .font(.system(size: 10))
-                    .foregroundColor(.lunaGold)
+                Text("•")
+                    .foregroundColor(.lunaTextMuted)
+                    .font(LunaFont.caption())
 
                 Text(content.metaString)
                     .font(LunaFont.caption())
@@ -87,58 +91,75 @@ struct HeroCarouselView: View {
             .padding(.horizontal, 16)
 
             // Action buttons
-            HStack(spacing: 12) {
-                Button { onTap(content) } label: {
+            HStack(spacing: 10) {
+                Button {
+                    LunaHaptic.medium()
+                    onTap(content)
+                } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "play.fill")
                         Text(content.isContinuing ? "Fortsätt" : "Spela")
+                            .fontWeight(.bold)
                     }
                     .accentButton()
                 }
+                .buttonStyle(LunaPressStyle(scale: 0.97))
                 .lunaGlow()
 
-                Button { onTap(content) } label: {
+                Button {
+                    onTap(content)
+                } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "info.circle")
                         Text("Info")
                     }
                     .secondaryButton()
                 }
+                .buttonStyle(LunaPressStyle(scale: 0.97))
 
                 Spacer()
 
-                // Watchlist button
-                Button {} label: {
+                // Watchlist
+                Button {
+                    LunaHaptic.light()
+                } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(.white)
                         .frame(width: 44, height: 44)
-                        .background(Color.lunaElevated)
+                        .background(.ultraThinMaterial)
                         .clipShape(Circle())
                         .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 1))
                 }
+                .buttonStyle(LunaPressStyle())
             }
             .padding(.horizontal, 16)
 
-            // Dot indicators
-            HStack(spacing: 6) {
+            // Page dots
+            HStack(spacing: 5) {
                 ForEach(0..<contents.count, id: \.self) { i in
                     Capsule()
-                        .fill(i == currentIndex ? Color.white : Color.white.opacity(0.3))
-                        .frame(width: i == currentIndex ? 20 : 6, height: 6)
-                        .animation(.lunaSnappy, value: currentIndex)
+                        .fill(i == currentIndex ? Color.white : Color.white.opacity(0.25))
+                        .frame(width: i == currentIndex ? 18 : 5, height: 5)
                 }
                 Spacer()
             }
             .padding(.horizontal, 16)
-            .padding(.bottom, 16)
+            .padding(.bottom, 14)
+            .animation(.lunaSnappy, value: currentIndex)
         }
-        .transition(.opacity.combined(with: .move(edge: .bottom)))
-        .animation(.lunaSmooth, value: content.id)
     }
 }
 
-// MARK: - Hero Card (single page)
+// MARK: - Hero Card
+
+// Deterministic "grain" pattern using a fixed seed to avoid re-rendering flicker
+private let heroGrainDots: [(CGFloat, CGFloat, CGFloat, Double)] = {
+    var rng = SeededRNG(seed: 42)
+    return (0..<60).map { _ in
+        (rng.next(in: 0...1), rng.next(in: 0...1), rng.next(in: 0.5...2), rng.next(in: 0.02...0.07))
+    }
+}()
 
 struct HeroCard: View {
     let content: LunaContent
@@ -146,72 +167,79 @@ struct HeroCard: View {
 
     var body: some View {
         ZStack {
-            // Background gradient
+            // Background
             content.heroGradient.gradient
                 .ignoresSafeArea()
 
-            // Decorative elements
             GeometryReader { geo in
+                let w = geo.size.width
+                let h = geo.size.height
+
+                // Ambient glow
                 Circle()
-                    .fill(content.heroGradient.accentColor.opacity(0.15))
-                    .frame(width: geo.size.width * 0.9)
-                    .blur(radius: 60)
-                    .offset(x: geo.size.width * 0.1, y: -geo.size.height * 0.15)
+                    .fill(content.heroGradient.accentColor.opacity(0.18))
+                    .frame(width: w * 0.9)
+                    .blur(radius: 55)
+                    .offset(x: w * 0.1, y: -h * 0.12)
 
                 Circle()
-                    .fill(Color.white.opacity(0.04))
-                    .frame(width: geo.size.width * 0.5)
-                    .offset(x: -geo.size.width * 0.1, y: geo.size.height * 0.2)
+                    .fill(Color.white.opacity(0.03))
+                    .frame(width: w * 0.45)
+                    .offset(x: -w * 0.08, y: h * 0.18)
 
-                // Radial "spotlight" effect
+                // Spotlight
                 RadialGradient(
-                    colors: [content.heroGradient.accentColor.opacity(0.2), .clear],
-                    center: .init(x: 0.7, y: 0.3),
+                    colors: [content.heroGradient.accentColor.opacity(0.18), .clear],
+                    center: .init(x: 0.72, y: 0.28),
                     startRadius: 0,
-                    endRadius: geo.size.width * 0.6
+                    endRadius: w * 0.55
                 )
-                .frame(width: geo.size.width, height: geo.size.height)
+                .frame(width: w, height: h)
 
-                // Subtle grain texture via small dots
+                // Deterministic grain texture
                 Canvas { ctx, size in
-                    for _ in 0..<50 {
-                        let x = CGFloat.random(in: 0...size.width)
-                        let y = CGFloat.random(in: 0...size.height)
-                        let r = CGFloat.random(in: 0.5...2)
-                        let opacity = Double.random(in: 0.02...0.08)
+                    for (nx, ny, r, op) in heroGrainDots {
+                        let x = nx * size.width
+                        let y = ny * size.height
                         ctx.fill(
-                            Path(ellipseIn: CGRect(x: x, y: y, width: r * 2, height: r * 2)),
-                            with: .color(.white.opacity(opacity))
+                            Path(ellipseIn: CGRect(x: x, y: y, width: r, height: r)),
+                            with: .color(.white.opacity(op))
                         )
                     }
                 }
                 .allowsHitTesting(false)
             }
 
-            // Bottom overlay for text readability
+            // Bottom readability gradient
             VStack {
                 Spacer()
                 LinearGradient(
-                    colors: [.clear, Color.lunaBackground.opacity(0.3), Color.lunaBackground.opacity(0.8), Color.lunaBackground],
+                    colors: [
+                        .clear,
+                        Color.lunaBackground.opacity(0.2),
+                        Color.lunaBackground.opacity(0.75),
+                        Color.lunaBackground
+                    ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .frame(height: UIScreen.main.bounds.height * 0.55)
+                .frame(height: UIScreen.main.bounds.height * 0.52)
             }
 
-            // Large decorative title watermark
+            // Watermark letter — decorative
             VStack {
                 Spacer()
                 HStack {
                     Spacer()
                     Text(content.title.prefix(1))
-                        .font(.system(size: 200, weight: .black, design: .rounded))
-                        .foregroundColor(.white.opacity(0.04))
-                        .offset(x: 30, y: 40)
+                        .font(.system(size: 190, weight: .black, design: .rounded))
+                        .foregroundColor(.white.opacity(0.035))
+                        .offset(x: 24, y: 36)
                 }
             }
         }
         .onTapGesture(perform: onTap)
+        .contentShape(Rectangle())
     }
 }
 
@@ -220,5 +248,27 @@ struct HeroCard: View {
 extension Array {
     subscript(safe index: Int) -> Element? {
         indices.contains(index) ? self[index] : nil
+    }
+}
+
+// MARK: - Seeded RNG (deterministic grain)
+
+private struct SeededRNG {
+    private var state: UInt64
+
+    init(seed: UInt64) { state = seed }
+
+    mutating func next(in range: ClosedRange<CGFloat>) -> CGFloat {
+        state = state &* 6364136223846793005 &+ 1442695040888963407
+        let t = state >> 33
+        let fraction = CGFloat(t) / CGFloat(UInt32.max)
+        return range.lowerBound + fraction * (range.upperBound - range.lowerBound)
+    }
+
+    mutating func next(in range: ClosedRange<Double>) -> Double {
+        state = state &* 6364136223846793005 &+ 1442695040888963407
+        let t = state >> 33
+        let fraction = Double(t) / Double(UInt32.max)
+        return range.lowerBound + fraction * (range.upperBound - range.lowerBound)
     }
 }

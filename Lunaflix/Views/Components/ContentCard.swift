@@ -7,92 +7,83 @@ struct PosterCard: View {
     var width: CGFloat = 120
     var height: CGFloat = 180
 
-    @State private var pressed = false
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            posterImage
-            Text(content.title)
-                .font(LunaFont.caption())
-                .foregroundColor(.lunaTextSecondary)
-                .lineLimit(1)
-        }
-        .frame(width: width)
-        .scaleEffect(pressed ? 0.94 : 1.0)
-        .animation(.lunaSnappy, value: pressed)
-        ._onButtonGesture { pressing in
-            pressed = pressing
-        } perform: {}
-    }
-
-    private var posterImage: some View {
         ZStack(alignment: .topLeading) {
+            // Background gradient
             Rectangle()
                 .fill(content.thumbnailGradient.gradient)
                 .frame(width: width, height: height)
-                .cornerRadius(10)
 
-            // Decorative pattern
+            // Decorative circle
             Circle()
                 .fill(.white.opacity(0.05))
-                .frame(width: width * 0.8)
-                .offset(x: -width * 0.2, y: -width * 0.2)
+                .frame(width: width * 0.75)
+                .offset(x: -width * 0.15, y: -width * 0.15)
 
-            // Title overlay
-            VStack {
+            // Bottom info overlay
+            VStack(spacing: 0) {
                 Spacer()
-                HStack {
-                    Text(content.title)
-                        .font(LunaFont.tag())
-                        .foregroundColor(.white)
-                        .lineLimit(2)
-                        .padding(8)
-                    Spacer()
-                }
-                .background(
-                    LinearGradient(
-                        colors: [.clear, .black.opacity(0.7)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
+                LinearGradient(
+                    colors: [.clear, .black.opacity(0.85)],
+                    startPoint: .top,
+                    endPoint: .bottom
                 )
-                .cornerRadius(10, corners: [.bottomLeft, .bottomRight])
+                .frame(height: height * 0.45)
+                .overlay(
+                    VStack(alignment: .leading, spacing: 3) {
+                        Spacer()
+                        Text(content.title)
+                            .font(LunaFont.tag())
+                            .foregroundColor(.white)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(content.genreString)
+                            .font(.system(size: 9, weight: .medium, design: .rounded))
+                            .foregroundColor(.white.opacity(0.55))
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 8),
+                    alignment: .bottomLeading
+                )
             }
 
-            // Badges
-            HStack(spacing: 4) {
-                if content.isNew {
-                    badgeView("NY", color: .lunaAccent)
+            // Badges row
+            if content.isNew || content.isTrending {
+                HStack(spacing: 3) {
+                    if content.isNew {
+                        badgeView("NY", color: .lunaAccent)
+                    }
+                    if content.isTrending {
+                        badgeView("🔥", color: .clear, textColor: .lunaGold)
+                    }
                 }
-                if content.isTrending {
-                    badgeView("TREND", color: .lunaGold)
-                }
+                .padding(5)
             }
-            .padding(6)
 
-            // Continue progress
+            // Continue progress bar
             if content.isContinuing {
                 VStack {
                     Spacer()
-                    ProgressView(value: content.continueProgress)
-                        .progressViewStyle(LinearProgressViewStyle(tint: .lunaAccentLight))
-                        .scaleEffect(y: 1.5)
-                        .padding(.horizontal, 4)
-                        .padding(.bottom, 4)
+                    LunaProgressBar(progress: content.continueProgress, height: 3)
+                        .padding(.horizontal, 8)
+                        .padding(.bottom, 5)
                 }
             }
         }
+        .frame(width: width, height: height)
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(
             RoundedRectangle(cornerRadius: 10)
                 .stroke(Color.white.opacity(0.08), lineWidth: 1)
         )
+        .contentShape(RoundedRectangle(cornerRadius: 10))
     }
 
-    private func badgeView(_ text: String, color: Color) -> some View {
+    private func badgeView(_ text: String, color: Color, textColor: Color = .white) -> some View {
         Text(text)
             .font(.system(size: 9, weight: .black, design: .rounded))
-            .foregroundColor(.white)
+            .foregroundColor(textColor)
             .padding(.horizontal, 5)
             .padding(.vertical, 2)
             .background(color)
@@ -107,8 +98,6 @@ struct WideCard: View {
     var width: CGFloat = 280
     var height: CGFloat = 158
 
-    @State private var pressed = false
-
     var body: some View {
         ZStack(alignment: .bottomLeading) {
             Rectangle()
@@ -118,26 +107,22 @@ struct WideCard: View {
             // Decorative circles
             Circle()
                 .fill(.white.opacity(0.04))
-                .frame(width: width * 0.6)
-                .offset(x: width * 0.4, y: -height * 0.1)
-
-            Circle()
-                .fill(.white.opacity(0.03))
-                .frame(width: width * 0.4)
-                .offset(x: -width * 0.1, y: height * 0.2)
+                .frame(width: width * 0.55)
+                .offset(x: width * 0.45, y: -height * 0.12)
 
             // Bottom overlay
             LinearGradient(
-                colors: [.clear, .black.opacity(0.75)],
-                startPoint: .center,
+                colors: [.clear, .black.opacity(0.8)],
+                startPoint: .init(x: 0, y: 0.3),
                 endPoint: .bottom
             )
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Text(content.type.rawValue)
-                        .font(LunaFont.tag())
+                    Text(content.type.rawValue.uppercased())
+                        .font(.system(size: 9, weight: .black, design: .rounded))
                         .foregroundColor(content.thumbnailGradient.accentColor)
+                        .tracking(1)
 
                     if content.isNew {
                         Text("NY")
@@ -147,6 +132,17 @@ struct WideCard: View {
                             .padding(.vertical, 1)
                             .background(Color.lunaAccent)
                             .cornerRadius(3)
+                    }
+
+                    Spacer()
+
+                    HStack(spacing: 3) {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 9))
+                            .foregroundColor(.lunaGold)
+                        Text(content.formattedRating)
+                            .font(LunaFont.mono(10))
+                            .foregroundColor(.lunaGold)
                     }
                 }
 
@@ -161,14 +157,12 @@ struct WideCard: View {
             }
             .padding(12)
 
+            // Progress bar pinned to bottom
             if content.isContinuing {
                 VStack {
                     Spacer()
-                    ProgressView(value: content.continueProgress)
-                        .progressViewStyle(LinearProgressViewStyle(tint: .lunaAccentLight))
-                        .scaleEffect(y: 1.5)
+                    LunaProgressBar(progress: content.continueProgress, height: 3)
                 }
-                .padding(.horizontal, 1)
             }
         }
         .frame(width: width, height: height)
@@ -177,9 +171,7 @@ struct WideCard: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Color.white.opacity(0.07), lineWidth: 1)
         )
-        .scaleEffect(pressed ? 0.96 : 1.0)
-        .animation(.lunaSnappy, value: pressed)
-        ._onButtonGesture { pressing in pressed = pressing } perform: {}
+        .contentShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 
@@ -188,29 +180,63 @@ struct WideCard: View {
 struct Top10Card: View {
     let content: LunaContent
     let rank: Int
-    var width: CGFloat = 140
+    var width: CGFloat = 130
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
-            PosterCard(content: content, width: width, height: width * 1.5)
+            // Poster
+            ZStack(alignment: .topLeading) {
+                Rectangle()
+                    .fill(content.thumbnailGradient.gradient)
+                    .frame(width: width, height: width * 1.45)
 
-            // Rank number
-            HStack(alignment: .bottom, spacing: 0) {
-                Text("\(rank)")
-                    .font(.system(size: 80, weight: .black, design: .rounded))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [Color.white.opacity(0.9), Color.white.opacity(0.1)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
+                Circle()
+                    .fill(.white.opacity(0.05))
+                    .frame(width: width * 0.7)
+                    .offset(x: -width * 0.1, y: -width * 0.1)
+
+                // Content name at bottom
+                VStack {
+                    Spacer()
+                    LinearGradient(
+                        colors: [.clear, .black.opacity(0.8)],
+                        startPoint: .top,
+                        endPoint: .bottom
                     )
-                    .shadow(color: .black.opacity(0.8), radius: 4, x: -2, y: 0)
-                    .offset(x: -10, y: 10)
-                Spacer()
+                    .frame(height: width * 0.5)
+                    .overlay(
+                        Text(content.title)
+                            .font(LunaFont.tag())
+                            .foregroundColor(.white)
+                            .lineLimit(2)
+                            .padding(.horizontal, 8)
+                            .padding(.bottom, 8),
+                        alignment: .bottomLeading
+                    )
+                }
             }
+            .frame(width: width, height: width * 1.45)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.white.opacity(0.08), lineWidth: 1))
+
+            // Large rank number — positioned to overlap left side
+            Text("\(rank)")
+                .font(.system(size: 88, weight: .black, design: .rounded))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.85),
+                            Color.white.opacity(0.05)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .shadow(color: .black.opacity(0.9), radius: 2, x: -1, y: 0)
+                .offset(x: -22, y: 12)
         }
-        .frame(width: width + 20)
+        .frame(width: width + 16)
+        .contentShape(Rectangle())
     }
 }
 
@@ -218,7 +244,7 @@ struct Top10Card: View {
 
 struct FeaturedCard: View {
     let content: LunaContent
-    var width: CGFloat = 200
+    var width: CGFloat = 190
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -226,20 +252,21 @@ struct FeaturedCard: View {
                 .fill(content.thumbnailGradient.gradient)
                 .frame(width: width, height: width * 1.4)
 
-            // Animated glow
+            // Soft glow blob
             Circle()
-                .fill(content.thumbnailGradient.accentColor.opacity(0.3))
-                .frame(width: width * 0.8)
-                .blur(radius: 30)
-                .offset(y: -width * 0.2)
+                .fill(content.thumbnailGradient.accentColor.opacity(0.25))
+                .frame(width: width * 0.9)
+                .blur(radius: 28)
+                .offset(y: -width * 0.25)
+                .allowsHitTesting(false)
 
             LinearGradient(
-                colors: [.clear, .black.opacity(0.85)],
-                startPoint: .center,
+                colors: [.clear, .black.opacity(0.9)],
+                startPoint: .init(x: 0, y: 0.35),
                 endPoint: .bottom
             )
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 5) {
                 HStack {
                     if content.isNew {
                         Text("NY")
@@ -251,12 +278,12 @@ struct FeaturedCard: View {
                             .cornerRadius(4)
                     }
                     Spacer()
-                    HStack(spacing: 2) {
+                    HStack(spacing: 3) {
                         Image(systemName: "star.fill")
-                            .font(.system(size: 10))
+                            .font(.system(size: 9))
                             .foregroundColor(.lunaGold)
                         Text(content.formattedRating)
-                            .font(LunaFont.caption())
+                            .font(LunaFont.mono(10))
                             .foregroundColor(.lunaGold)
                     }
                 }
@@ -268,7 +295,7 @@ struct FeaturedCard: View {
 
                 Text(content.genreString)
                     .font(LunaFont.caption())
-                    .foregroundColor(.lunaTextSecondary)
+                    .foregroundColor(.lunaTextSecondary.opacity(0.8))
             }
             .padding(12)
         }
@@ -276,8 +303,9 @@ struct FeaturedCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .stroke(content.thumbnailGradient.accentColor.opacity(0.2), lineWidth: 1)
+                .stroke(content.thumbnailGradient.accentColor.opacity(0.18), lineWidth: 1)
         )
+        .contentShape(RoundedRectangle(cornerRadius: 14))
     }
 }
 
@@ -285,56 +313,67 @@ struct FeaturedCard: View {
 
 struct ContinueWatchingCard: View {
     let content: LunaContent
-    var width: CGFloat = 220
+    var width: CGFloat = 230
 
     var body: some View {
         ZStack(alignment: .bottom) {
+            // Thumbnail
             Rectangle()
                 .fill(content.thumbnailGradient.gradient)
-                .frame(width: width, height: 130)
+                .frame(width: width, height: 140)
 
+            // Decorative
+            Circle()
+                .fill(.white.opacity(0.04))
+                .frame(width: width * 0.5)
+                .offset(x: width * 0.25, y: -20)
+
+            // Gradient overlay
             LinearGradient(
-                colors: [.clear, .black.opacity(0.8)],
-                startPoint: .top,
+                colors: [.clear, .black.opacity(0.85)],
+                startPoint: .init(x: 0, y: 0.25),
                 endPoint: .bottom
             )
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text(content.title)
-                    .font(LunaFont.title3())
-                    .foregroundColor(.white)
-                    .lineLimit(1)
-
-                HStack(spacing: 8) {
-                    ProgressView(value: content.continueProgress)
-                        .progressViewStyle(LinearProgressViewStyle(tint: .lunaAccentLight))
-                        .scaleEffect(y: 1.5)
-
-                    Text("\(Int(content.continueProgress * 100))%")
-                        .font(LunaFont.caption())
-                        .foregroundColor(.lunaTextSecondary)
+            // Content info
+            VStack(alignment: .leading, spacing: 7) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(content.title)
+                            .font(LunaFont.title3())
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                        Text("\(Int(content.continueProgress * 100))% sett")
+                            .font(LunaFont.caption())
+                            .foregroundColor(.lunaTextSecondary)
+                    }
+                    Spacer()
+                    // Play button
+                    ZStack {
+                        Circle()
+                            .fill(Color.lunaAccent)
+                            .frame(width: 34, height: 34)
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.white)
+                            .offset(x: 1)
+                    }
+                    .lunaGlow(color: .lunaAccent, radius: 10)
                 }
 
-                HStack(spacing: 6) {
-                    Image(systemName: "play.fill")
-                        .font(.system(size: 10))
-                    Text("Fortsätt")
-                        .font(LunaFont.caption())
-                }
-                .foregroundColor(.white)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(Color.lunaAccent)
-                .cornerRadius(20)
+                // Progress bar
+                LunaProgressBar(progress: content.continueProgress, height: 3)
             }
-            .padding(10)
+            .padding(.horizontal, 12)
+            .padding(.bottom, 10)
         }
-        .frame(width: width, height: 130)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .frame(width: width, height: 140)
+        .clipShape(RoundedRectangle(cornerRadius: 13))
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 13)
                 .stroke(Color.white.opacity(0.08), lineWidth: 1)
         )
+        .contentShape(RoundedRectangle(cornerRadius: 13))
     }
 }
 
@@ -349,42 +388,12 @@ struct RatingBadge: View {
                 .font(.system(size: 10))
                 .foregroundColor(.lunaGold)
             Text(String(format: "%.1f", rating))
-                .font(LunaFont.caption())
+                .font(LunaFont.mono(11))
                 .foregroundColor(.lunaGold)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(.ultraThinMaterial)
         .cornerRadius(20)
-    }
-}
-
-// MARK: - Helpers
-
-extension View {
-    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
-        clipShape(RoundedCorner(radius: radius, corners: corners))
-    }
-
-    func _onButtonGesture(pressing: @escaping (Bool) -> Void, perform: @escaping () -> Void) -> some View {
-        self.simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in pressing(true) }
-                .onEnded { _ in pressing(false) }
-        )
-    }
-}
-
-struct RoundedCorner: Shape {
-    var radius: CGFloat = .infinity
-    var corners: UIRectCorner = .allCorners
-
-    func path(in rect: CGRect) -> Path {
-        let path = UIBezierPath(
-            roundedRect: rect,
-            byRoundingCorners: corners,
-            cornerRadii: CGSize(width: radius, height: radius)
-        )
-        return Path(path.cgPath)
     }
 }

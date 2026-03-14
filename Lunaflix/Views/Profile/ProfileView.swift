@@ -3,7 +3,8 @@ import SwiftUI
 struct ProfileView: View {
     @StateObject private var vm = ProfileViewModel()
     @State private var selectedContent: LunaContent? = nil
-    @State private var showSettings = false
+    @State private var showStreamingPicker = false
+    @State private var showDownloadPicker = false
 
     var body: some View {
         ZStack {
@@ -11,31 +12,25 @@ struct ProfileView: View {
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 0) {
-                    // Header
-                    profileHeader
-                        .padding(.bottom, 24)
+                    profileHeader.padding(.bottom, 24)
 
-                    // Premium card
                     if vm.user.isPremium {
                         premiumCard
                             .padding(.horizontal, 16)
                             .padding(.bottom, 24)
                     }
 
-                    // Stats
                     statsSection
                         .padding(.horizontal, 16)
                         .padding(.bottom, 24)
 
-                    // Recent activity
                     recentSection
+                        .padding(.bottom, 24)
 
-                    // Settings
                     settingsSection
                         .padding(.horizontal, 16)
                         .padding(.bottom, 24)
 
-                    // App info
                     appInfo
                         .padding(.horizontal, 16)
                         .padding(.bottom, 120)
@@ -45,49 +40,90 @@ struct ProfileView: View {
         .sheet(item: $selectedContent) { content in
             ContentDetailView(content: content)
         }
+        .confirmationDialog(
+            "Streamingkvalitet",
+            isPresented: $showStreamingPicker,
+            titleVisibility: .visible
+        ) {
+            ForEach(ProfileViewModel.StreamingQuality.allCases, id: \.rawValue) { q in
+                Button(q.rawValue) {
+                    LunaHaptic.selection()
+                    vm.streamingQuality = q
+                }
+            }
+        }
+        .confirmationDialog(
+            "Nedladdningskvalitet",
+            isPresented: $showDownloadPicker,
+            titleVisibility: .visible
+        ) {
+            ForEach(ProfileViewModel.DownloadQuality.allCases, id: \.rawValue) { q in
+                Button(q.rawValue) {
+                    LunaHaptic.selection()
+                    vm.downloadQuality = q
+                }
+            }
+        }
     }
 
     // MARK: - Profile Header
 
     private var profileHeader: some View {
         ZStack(alignment: .bottom) {
-            // Background gradient
             LinearGradient(
-                colors: [Color.lunaAccent.opacity(0.3), Color.lunaBackground],
+                colors: [
+                    Color.lunaAccent.opacity(0.35),
+                    Color.lunaAccent.opacity(0.1),
+                    Color.lunaBackground
+                ],
                 startPoint: .top,
                 endPoint: .bottom
             )
-            .frame(height: 220)
+            .frame(height: 230)
             .ignoresSafeArea(edges: .top)
 
-            VStack(spacing: 16) {
-                // Avatar
+            VStack(spacing: 14) {
                 ZStack {
+                    // Glow ring
+                    Circle()
+                        .fill(Color.lunaAccent.opacity(0.25))
+                        .frame(width: 110, height: 110)
+                        .blur(radius: 16)
+
+                    // Avatar
                     Circle()
                         .fill(vm.user.avatar.gradient)
-                        .frame(width: 90, height: 90)
-                        .lunaGlow(color: .lunaAccent, radius: 20)
+                        .frame(width: 88, height: 88)
+                        .overlay(
+                            Circle()
+                                .stroke(Color.white.opacity(0.2), lineWidth: 2)
+                        )
 
                     Text(vm.user.avatar.initials)
-                        .font(.system(size: 32, weight: .black, design: .rounded))
+                        .font(.system(size: 30, weight: .black, design: .rounded))
                         .foregroundColor(.white)
 
-                    // Premium badge
+                    // Premium crown badge
                     if vm.user.isPremium {
                         Circle()
-                            .fill(LinearGradient.lunaAccentGradient)
-                            .frame(width: 28, height: 28)
+                            .fill(LinearGradient(
+                                colors: [Color.lunaGold, Color.lunaGold.opacity(0.7)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ))
+                            .frame(width: 26, height: 26)
                             .overlay(
                                 Image(systemName: "crown.fill")
-                                    .font(.system(size: 12))
+                                    .font(.system(size: 11, weight: .bold))
                                     .foregroundColor(.white)
                             )
-                            .offset(x: 32, y: 32)
+                            .overlay(Circle().stroke(Color.lunaBackground, lineWidth: 2))
+                            .offset(x: 30, y: 30)
                     }
                 }
-                .padding(.top, 60)
+                .padding(.top, 56)
 
-                VStack(spacing: 4) {
+                VStack(spacing: 5) {
                     Text(vm.user.name)
                         .font(LunaFont.title1())
                         .foregroundColor(.white)
@@ -95,7 +131,7 @@ struct ProfileView: View {
                     if vm.user.isPremium {
                         HStack(spacing: 4) {
                             Image(systemName: "crown.fill")
-                                .font(.system(size: 11))
+                                .font(.system(size: 10))
                                 .foregroundColor(.lunaGold)
                             Text("Premium")
                                 .font(LunaFont.caption())
@@ -123,45 +159,51 @@ struct ProfileView: View {
                     endPoint: .bottomTrailing
                 ))
 
-            // Decorative
+            // Decorative blobs
             Circle()
                 .fill(.white.opacity(0.05))
-                .frame(width: 120)
-                .offset(x: 120, y: -40)
+                .frame(width: 130)
+                .offset(x: 110, y: -45)
+            Circle()
+                .fill(.white.opacity(0.03))
+                .frame(width: 80)
+                .offset(x: 140, y: 30)
 
-            HStack {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 6) {
+            HStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 7) {
+                    HStack(spacing: 5) {
                         Image(systemName: "crown.fill")
+                            .font(.system(size: 12))
                             .foregroundColor(.lunaGold)
-                        Text("Premium Aktiv")
-                            .font(LunaFont.caption())
+                        Text("PREMIUM AKTIV")
+                            .font(LunaFont.tag())
                             .foregroundColor(.lunaGold)
+                            .tracking(0.5)
                     }
 
                     Text("Obegränsad\nstreaming")
-                        .font(LunaFont.title2())
+                        .font(LunaFont.title1())
                         .foregroundColor(.white)
-                        .lineSpacing(2)
+                        .lineSpacing(3)
 
                     Text("Förnyelse 15 april 2026")
                         .font(LunaFont.caption())
-                        .foregroundColor(.white.opacity(0.6))
+                        .foregroundColor(.white.opacity(0.55))
                 }
 
                 Spacer()
 
                 Image(systemName: "moon.stars.fill")
-                    .font(.system(size: 50))
+                    .font(.system(size: 52))
                     .foregroundStyle(LinearGradient(
-                        colors: [.white.opacity(0.9), .lunaAccentLight],
+                        colors: [.white.opacity(0.95), .lunaAccentLight],
                         startPoint: .top,
                         endPoint: .bottom
                     ))
             }
             .padding(20)
         }
-        .frame(height: 130)
+        .frame(height: 135)
     }
 
     // MARK: - Stats
@@ -172,22 +214,31 @@ struct ProfileView: View {
                 .font(LunaFont.title3())
                 .foregroundColor(.lunaTextPrimary)
 
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                ForEach(vm.stats, id: \.label) { stat in
-                    statCard(stat.label, value: stat.value)
-                }
+            LazyVGrid(
+                columns: [GridItem(.flexible()), GridItem(.flexible())],
+                spacing: 10
+            ) {
+                statCard("Tittar på", value: "\(vm.user.watchHistory.count)", icon: "play.circle.fill", color: .lunaAccentLight)
+                statCard("Bevakningslista", value: "\(vm.user.watchlist.count)", icon: "bookmark.fill", color: .lunaCyan)
+                statCard("Nedladdningar", value: "3", icon: "arrow.down.circle.fill", color: .lunaGold)
+                statCard("Prenumeration", value: vm.user.isPremium ? "Premium" : "Bas", icon: "crown.fill", color: .lunaGold)
             }
         }
     }
 
-    private func statCard(_ label: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(value)
-                .font(LunaFont.title2())
-                .foregroundColor(.white)
-            Text(label)
-                .font(LunaFont.caption())
-                .foregroundColor(.lunaTextMuted)
+    private func statCard(_ label: String, value: String, icon: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 20, weight: .bold))
+                .foregroundColor(color)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(value)
+                    .font(LunaFont.title2())
+                    .foregroundColor(.white)
+                Text(label)
+                    .font(LunaFont.caption())
+                    .foregroundColor(.lunaTextMuted)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
@@ -208,16 +259,18 @@ struct ProfileView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
                     ForEach(vm.recentActivity) { content in
-                        Button { selectedContent = content } label: {
+                        Button {
+                            LunaHaptic.light()
+                            selectedContent = content
+                        } label: {
                             PosterCard(content: content)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(LunaPressStyle())
                     }
                 }
                 .padding(.horizontal, 16)
             }
         }
-        .padding(.bottom, 24)
     }
 
     // MARK: - Settings
@@ -228,22 +281,49 @@ struct ProfileView: View {
                 .font(LunaFont.title3())
                 .foregroundColor(.lunaTextPrimary)
 
-            VStack(spacing: 2) {
-                settingsToggle("Aviseringar", icon: "bell.fill", isOn: $vm.notificationsEnabled)
-                Divider().background(Color.white.opacity(0.06))
-                settingsToggle("Automatisk uppspelning", icon: "play.rectangle.fill", isOn: $vm.autoplayEnabled)
-                Divider().background(Color.white.opacity(0.06))
-                settingsPicker("Streamingkvalitet", icon: "antenna.radiowaves.left.and.right",
-                               value: vm.streamingQuality.rawValue)
-                Divider().background(Color.white.opacity(0.06))
-                settingsPicker("Nedladdningskvalitet", icon: "arrow.down.circle.fill",
-                               value: vm.downloadQuality.rawValue)
-                Divider().background(Color.white.opacity(0.06))
-                settingsButton("Hantera prenumeration", icon: "creditcard.fill", color: .lunaAccentLight)
-                Divider().background(Color.white.opacity(0.06))
-                settingsButton("Hjälp & support", icon: "questionmark.circle.fill", color: .lunaCyan)
-                Divider().background(Color.white.opacity(0.06))
-                settingsButton("Logga ut", icon: "rectangle.portrait.and.arrow.right", color: .red)
+            VStack(spacing: 0) {
+                settingsRow {
+                    settingsToggle("Aviseringar", icon: "bell.fill", color: .lunaAccentLight, isOn: $vm.notificationsEnabled)
+                }
+                settingsDivider
+                settingsRow {
+                    settingsToggle("Automatisk uppspelning", icon: "play.rectangle.fill", color: .lunaAccentLight, isOn: $vm.autoplayEnabled)
+                }
+                settingsDivider
+                settingsRow {
+                    Button { showStreamingPicker = true } label: {
+                        settingsNavRow("Streamingkvalitet", icon: "antenna.radiowaves.left.and.right", color: .lunaAccentLight, value: vm.streamingQuality.rawValue)
+                    }
+                    .buttonStyle(LunaPressStyle(scale: 0.99))
+                }
+                settingsDivider
+                settingsRow {
+                    Button { showDownloadPicker = true } label: {
+                        settingsNavRow("Nedladdningskvalitet", icon: "arrow.down.circle.fill", color: .lunaAccentLight, value: vm.downloadQuality.rawValue)
+                    }
+                    .buttonStyle(LunaPressStyle(scale: 0.99))
+                }
+                settingsDivider
+                settingsRow {
+                    Button {} label: {
+                        settingsNavRow("Hantera prenumeration", icon: "creditcard.fill", color: .lunaAccentLight, value: nil)
+                    }
+                    .buttonStyle(LunaPressStyle(scale: 0.99))
+                }
+                settingsDivider
+                settingsRow {
+                    Button {} label: {
+                        settingsNavRow("Hjälp & support", icon: "questionmark.circle.fill", color: .lunaCyan, value: nil)
+                    }
+                    .buttonStyle(LunaPressStyle(scale: 0.99))
+                }
+                settingsDivider
+                settingsRow {
+                    Button {} label: {
+                        settingsNavRow("Logga ut", icon: "rectangle.portrait.and.arrow.right", color: .red, value: nil, destructive: true)
+                    }
+                    .buttonStyle(LunaPressStyle(scale: 0.99))
+                }
             }
             .background(Color.lunaCard)
             .cornerRadius(16)
@@ -251,85 +331,70 @@ struct ProfileView: View {
         }
     }
 
-    private func settingsToggle(_ title: String, icon: String, isOn: Binding<Bool>) -> some View {
+    private func settingsRow<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        content().padding(.horizontal, 16).padding(.vertical, 12)
+    }
+
+    private var settingsDivider: some View {
+        Rectangle()
+            .fill(Color.white.opacity(0.05))
+            .frame(height: 1)
+            .padding(.horizontal, 16)
+    }
+
+    private func settingsToggle(_ title: String, icon: String, color: Color, isOn: Binding<Bool>) -> some View {
         HStack {
-            Image(systemName: icon)
-                .font(.system(size: 14))
-                .foregroundColor(.lunaAccentLight)
-                .frame(width: 28, height: 28)
-                .background(Color.lunaAccent.opacity(0.15))
-                .cornerRadius(7)
+            iconBg(icon, color: color)
             Text(title)
                 .font(LunaFont.body())
                 .foregroundColor(.lunaTextPrimary)
             Spacer()
             Toggle("", isOn: isOn)
                 .tint(.lunaAccent)
+                .labelsHidden()
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
     }
 
-    private func settingsPicker(_ title: String, icon: String, value: String) -> some View {
+    private func settingsNavRow(_ title: String, icon: String, color: Color, value: String?, destructive: Bool = false) -> some View {
         HStack {
-            Image(systemName: icon)
-                .font(.system(size: 14))
-                .foregroundColor(.lunaAccentLight)
-                .frame(width: 28, height: 28)
-                .background(Color.lunaAccent.opacity(0.15))
-                .cornerRadius(7)
+            iconBg(icon, color: color)
             Text(title)
                 .font(LunaFont.body())
-                .foregroundColor(.lunaTextPrimary)
+                .foregroundColor(destructive ? .red : .lunaTextPrimary)
             Spacer()
-            Text(value)
-                .font(LunaFont.body())
-                .foregroundColor(.lunaTextMuted)
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12))
-                .foregroundColor(.lunaTextMuted)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-    }
-
-    private func settingsButton(_ title: String, icon: String, color: Color) -> some View {
-        Button {} label: {
-            HStack {
-                Image(systemName: icon)
-                    .font(.system(size: 14))
-                    .foregroundColor(color)
-                    .frame(width: 28, height: 28)
-                    .background(color.opacity(0.15))
-                    .cornerRadius(7)
-                Text(title)
-                    .font(LunaFont.body())
-                    .foregroundColor(color == .red ? .red : .lunaTextPrimary)
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12))
+            if let value {
+                Text(value)
+                    .font(LunaFont.caption())
                     .foregroundColor(.lunaTextMuted)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.lunaTextMuted)
         }
-        .buttonStyle(.plain)
+    }
+
+    private func iconBg(_ icon: String, color: Color) -> some View {
+        Image(systemName: icon)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundColor(color)
+            .frame(width: 30, height: 30)
+            .background(color.opacity(0.15))
+            .cornerRadius(8)
     }
 
     // MARK: - App Info
 
     private var appInfo: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             HStack(spacing: 6) {
                 Image(systemName: "moon.stars.fill")
+                    .font(.system(size: 16))
                     .foregroundStyle(LinearGradient.lunaAccentGradient)
                 Text("Lunaflix")
-                    .font(LunaFont.body())
-                    .fontWeight(.bold)
+                    .font(LunaFont.title3())
                     .foregroundStyle(LinearGradient.lunaAccentGradient)
             }
-
-            Text("Version 2.0.0 • © 2025 Lunaflix AB")
+            Text("Version 2.0.0 • © 2026 Lunaflix AB")
                 .font(LunaFont.caption())
                 .foregroundColor(.lunaTextMuted)
         }

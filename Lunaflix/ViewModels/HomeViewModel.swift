@@ -6,9 +6,10 @@ final class HomeViewModel: ObservableObject {
     @Published var heroContents: [LunaContent] = []
     @Published var categories: [ContentCategory] = []
     @Published var currentHeroIndex: Int = 0
-    @Published var isLoading: Bool = false
+    @Published var isLoading: Bool = true
 
     private var heroTimer: AnyCancellable?
+    private var loadTask: Task<Void, Never>? = nil
 
     init() {
         load()
@@ -17,38 +18,41 @@ final class HomeViewModel: ObservableObject {
 
     private func load() {
         isLoading = true
-        // Simulate async load
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-            guard let self else { return }
-            self.heroContents = MockData.heroContent
-            self.categories = MockData.categories
-            self.isLoading = false
+        loadTask?.cancel()
+        loadTask = Task {
+            // Simulate brief async load
+            try? await Task.sleep(for: .milliseconds(350))
+            guard !Task.isCancelled else { return }
+            heroContents = MockData.heroContent
+            categories = MockData.categories
+            isLoading = false
         }
     }
 
     private func startHeroTimer() {
+        heroTimer?.cancel()
         heroTimer = Timer.publish(every: 5, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
                 guard let self else { return }
+                let next = (self.currentHeroIndex + 1) % max(1, self.heroContents.count)
                 withAnimation(.lunaSmooth) {
-                    self.currentHeroIndex = (self.currentHeroIndex + 1) % max(1, self.heroContents.count)
+                    self.currentHeroIndex = next
                 }
             }
     }
 
     func selectHero(_ index: Int) {
+        guard index != currentHeroIndex else { return }
         withAnimation(.lunaSnappy) {
             currentHeroIndex = index
         }
-        // Reset timer on manual selection
-        heroTimer?.cancel()
+        // Restart timer so it doesn't immediately jump after manual selection
         startHeroTimer()
     }
 
     var currentHero: LunaContent? {
-        guard !heroContents.isEmpty else { return nil }
-        return heroContents[currentHeroIndex]
+        heroContents[safe: currentHeroIndex]
     }
 
     func refresh() {

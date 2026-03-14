@@ -15,7 +15,7 @@ struct ContentRowView: View {
     // MARK: - Header
 
     private var rowHeader: some View {
-        HStack(alignment: .bottom) {
+        HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(category.title)
                     .font(LunaFont.title3())
@@ -29,11 +29,16 @@ struct ContentRowView: View {
             }
             Spacer()
             Button {
-                // See all
+                LunaHaptic.light()
             } label: {
-                Text("Se alla")
-                    .font(LunaFont.caption())
-                    .foregroundColor(.lunaAccentLight)
+                HStack(spacing: 3) {
+                    Text("Se alla")
+                        .font(LunaFont.caption())
+                        .foregroundColor(.lunaAccentLight)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.lunaAccentLight)
+                }
             }
         }
         .padding(.horizontal, 16)
@@ -46,16 +51,12 @@ struct ContentRowView: View {
         switch category.style {
         case .continueWatching:
             continueWatchingRow
-
         case .top10:
             top10Row
-
         case .featured:
             featuredRow
-
         case .wideCard:
             wideRow
-
         case .standard:
             standardRow
         }
@@ -68,7 +69,7 @@ struct ContentRowView: View {
                     Button { onTap(content) } label: {
                         PosterCard(content: content)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(LunaPressStyle())
                 }
             }
             .padding(.horizontal, 16)
@@ -82,7 +83,7 @@ struct ContentRowView: View {
                     Button { onTap(content) } label: {
                         WideCard(content: content)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(LunaPressStyle())
                 }
             }
             .padding(.horizontal, 16)
@@ -96,10 +97,10 @@ struct ContentRowView: View {
                     Button { onTap(content) } label: {
                         Top10Card(content: content, rank: index + 1)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(LunaPressStyle())
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 20)
         }
     }
 
@@ -110,7 +111,7 @@ struct ContentRowView: View {
                     Button { onTap(content) } label: {
                         FeaturedCard(content: content)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(LunaPressStyle())
                 }
             }
             .padding(.horizontal, 16)
@@ -121,10 +122,13 @@ struct ContentRowView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
                 ForEach(category.contents) { content in
-                    Button { onTap(content) } label: {
+                    Button {
+                        LunaHaptic.light()
+                        onTap(content)
+                    } label: {
                         ContinueWatchingCard(content: content)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(LunaPressStyle())
                 }
             }
             .padding(.horizontal, 16)

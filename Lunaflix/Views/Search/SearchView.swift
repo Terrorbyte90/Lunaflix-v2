@@ -5,8 +5,13 @@ struct SearchView: View {
     @State private var selectedContent: LunaContent? = nil
     @FocusState private var searchFocused: Bool
 
-    private let columns = [
+    // 2 columns for genre grid, 3 for results (wider posters)
+    private let resultColumns = [
         GridItem(.flexible(), spacing: 10),
+        GridItem(.flexible(), spacing: 10),
+        GridItem(.flexible(), spacing: 10)
+    ]
+    private let genreColumns = [
         GridItem(.flexible(), spacing: 10),
         GridItem(.flexible(), spacing: 10)
     ]
@@ -16,17 +21,14 @@ struct SearchView: View {
             Color.lunaBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header
                 searchHeader
 
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 28) {
                         if vm.isEmptySearch {
-                            // Default: genre grid + trending
                             genreGrid
                             trendingSection
                         } else {
-                            // Active search/filter results
                             if vm.results.isEmpty {
                                 emptyState
                             } else {
@@ -46,39 +48,53 @@ struct SearchView: View {
     // MARK: - Search Header
 
     private var searchHeader: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             HStack {
                 Text("Utforska")
                     .font(LunaFont.hero())
                     .foregroundColor(.lunaTextPrimary)
                 Spacer()
+                if !vm.isEmptySearch {
+                    Button {
+                        searchFocused = false
+                        vm.clearFilters()
+                    } label: {
+                        Text("Avbryt")
+                            .font(LunaFont.body())
+                            .foregroundColor(.lunaAccentLight)
+                    }
+                    .buttonStyle(LunaPressStyle())
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
             }
             .padding(.horizontal, 16)
-            .padding(.top, 60)
+            .padding(.top, 58)
+            .animation(.lunaSnappy, value: vm.isEmptySearch)
 
             // Search bar
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.system(size: 15, weight: .medium))
                     .foregroundColor(searchFocused ? .lunaAccentLight : .lunaTextMuted)
+                    .animation(.lunaSnappy, value: searchFocused)
 
-                TextField("Sök filmer, serier...", text: $vm.query)
+                TextField("Sök filmer, serier, dokumentärer...", text: $vm.query)
                     .font(LunaFont.body())
                     .foregroundColor(.lunaTextPrimary)
                     .focused($searchFocused)
                     .submitLabel(.search)
                     .tint(.lunaAccentLight)
+                    .onSubmit { searchFocused = false }
 
                 if !vm.query.isEmpty {
                     Button {
-                        withAnimation(.lunaSnappy) {
-                            vm.query = ""
-                        }
+                        withAnimation(.lunaSnappy) { vm.query = "" }
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 16))
                             .foregroundColor(.lunaTextMuted)
                     }
+                    .transition(.scale.combined(with: .opacity))
                 }
             }
             .padding(.horizontal, 14)
@@ -87,25 +103,35 @@ struct SearchView: View {
             .cornerRadius(14)
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
-                    .stroke(searchFocused ? Color.lunaAccentLight.opacity(0.5) : Color.white.opacity(0.06), lineWidth: 1)
+                    .stroke(
+                        searchFocused ? Color.lunaAccentLight.opacity(0.5) : Color.white.opacity(0.07),
+                        lineWidth: 1
+                    )
             )
             .padding(.horizontal, 16)
             .animation(.lunaSnappy, value: searchFocused)
 
-            // Filter chips
+            // Active filter chips
             if vm.hasActiveFilter {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         if let genre = vm.selectedGenre {
-                            filterChip(genre.displayName) { vm.selectedGenre = nil }
+                            filterChip(genre.displayName, icon: "xmark") {
+                                LunaHaptic.light()
+                                vm.selectedGenre = nil
+                            }
                         }
                         if let type = vm.selectedType {
-                            filterChip(type.rawValue) { vm.selectedType = nil }
+                            filterChip(type.rawValue, icon: "xmark") {
+                                LunaHaptic.light()
+                                vm.selectedType = nil
+                            }
                         }
                         Button {
+                            LunaHaptic.light()
                             vm.clearFilters()
                         } label: {
-                            Text("Rensa")
+                            Text("Rensa alla")
                                 .font(LunaFont.caption())
                                 .foregroundColor(.lunaTextMuted)
                                 .padding(.horizontal, 10)
@@ -117,7 +143,7 @@ struct SearchView: View {
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
 
-            // Type filters
+            // Content type filter pills
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     typeChip(nil, label: "Alla")
@@ -141,19 +167,17 @@ struct SearchView: View {
                 .foregroundColor(.lunaTextPrimary)
                 .padding(.horizontal, 16)
 
-            let gridCols = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
-
-            LazyVGrid(columns: gridCols, spacing: 12) {
+            LazyVGrid(columns: genreColumns, spacing: 10) {
                 ForEach(vm.featuredGenres, id: \.rawValue) { genre in
-                    GenreCard(genre: genre) {
+                    GenreCard(
+                        genre: genre,
+                        isSelected: vm.selectedGenre == genre
+                    ) {
+                        LunaHaptic.selection()
                         withAnimation(.lunaSnappy) {
                             vm.selectedGenre = (vm.selectedGenre == genre) ? nil : genre
                         }
                     }
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.lunaAccentLight, lineWidth: vm.selectedGenre == genre ? 2 : 0)
-                    )
                 }
             }
             .padding(.horizontal, 16)
@@ -164,51 +188,67 @@ struct SearchView: View {
 
     private var trendingSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
+            HStack(spacing: 6) {
                 Image(systemName: "flame.fill")
-                    .foregroundColor(.lunaGold)
+                    .foregroundStyle(LinearGradient(
+                        colors: [.lunaGold, .lunaPink],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ))
                 Text("Trending nu")
                     .font(LunaFont.title3())
                     .foregroundColor(.lunaTextPrimary)
             }
             .padding(.horizontal, 16)
 
-            LazyVGrid(columns: columns, spacing: 10) {
-                ForEach(vm.trendingContent) { content in
-                    GeometryReader { geo in
-                        Button { selectedContent = content } label: {
-                            PosterCard(content: content, width: geo.size.width, height: 160)
+            // Horizontal scroll of wide cards for trending
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(vm.trendingContent) { content in
+                        Button {
+                            LunaHaptic.light()
+                            selectedContent = content
+                        } label: {
+                            WideCard(content: content, width: 250, height: 145)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(LunaPressStyle())
                     }
-                    .frame(height: 200)
                 }
+                .padding(.horizontal, 16)
             }
-            .padding(.horizontal, 16)
         }
     }
 
     // MARK: - Results Grid
 
     private var resultsGrid: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("\(vm.results.count) resultat")
-                    .font(LunaFont.title3())
-                    .foregroundColor(.lunaTextPrimary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(vm.results.count) resultat")
+                        .font(LunaFont.title3())
+                        .foregroundColor(.lunaTextPrimary)
+                    if !vm.query.isEmpty {
+                        Text("för \"\(vm.query)\"")
+                            .font(LunaFont.caption())
+                            .foregroundColor(.lunaTextMuted)
+                    }
+                }
                 Spacer()
             }
             .padding(.horizontal, 16)
 
-            LazyVGrid(columns: columns, spacing: 10) {
+            LazyVGrid(columns: resultColumns, spacing: 10) {
                 ForEach(vm.results) { content in
-                    GeometryReader { geo in
-                        Button { selectedContent = content } label: {
-                            PosterCard(content: content, width: geo.size.width, height: 160)
-                        }
-                        .buttonStyle(.plain)
+                    Button {
+                        LunaHaptic.light()
+                        selectedContent = content
+                    } label: {
+                        // Fixed height posters in grid
+                        PosterCard(content: content, width: 110, height: 160)
+                            .frame(maxWidth: .infinity)
                     }
-                    .frame(height: 200)
+                    .buttonStyle(LunaPressStyle())
                 }
             }
             .padding(.horizontal, 16)
@@ -220,30 +260,38 @@ struct SearchView: View {
 
     private var emptyState: some View {
         VStack(spacing: 20) {
-            Spacer().frame(height: 60)
+            Spacer().frame(height: 50)
 
             ZStack {
                 Circle()
                     .fill(Color.lunaCard)
-                    .frame(width: 80, height: 80)
+                    .frame(width: 90, height: 90)
                 Image(systemName: "moon.zzz.fill")
-                    .font(.system(size: 36))
+                    .font(.system(size: 40))
                     .foregroundStyle(LinearGradient.lunaAccentGradient)
             }
+            .lunaGlow(color: .lunaAccent, radius: 15)
 
-            Text("Inga resultat")
-                .font(LunaFont.title2())
-                .foregroundColor(.lunaTextPrimary)
+            VStack(spacing: 8) {
+                Text("Inga resultat")
+                    .font(LunaFont.title2())
+                    .foregroundColor(.lunaTextPrimary)
 
-            Text("Prova att söka på ett annat sätt\neller ändra dina filter")
-                .font(LunaFont.body())
-                .foregroundColor(.lunaTextMuted)
-                .multilineTextAlignment(.center)
+                Text("Prova ett annat sökord\neller ändra dina filter")
+                    .font(LunaFont.body())
+                    .foregroundColor(.lunaTextMuted)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(3)
+            }
 
-            Button { vm.clearFilters() } label: {
+            Button {
+                LunaHaptic.light()
+                vm.clearFilters()
+            } label: {
                 Text("Rensa filter")
                     .accentButton()
             }
+            .buttonStyle(LunaPressStyle(scale: 0.97))
         }
         .frame(maxWidth: .infinity)
         .padding()
@@ -251,27 +299,28 @@ struct SearchView: View {
 
     // MARK: - Chips
 
-    private func filterChip(_ text: String, onRemove: @escaping () -> Void) -> some View {
+    private func filterChip(_ text: String, icon: String, onRemove: @escaping () -> Void) -> some View {
         HStack(spacing: 6) {
             Text(text)
                 .font(LunaFont.caption())
                 .foregroundColor(.lunaAccentLight)
             Button(action: onRemove) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 10, weight: .bold))
+                Image(systemName: icon)
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundColor(.lunaAccentLight)
             }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(Color.lunaAccent.opacity(0.2))
+        .background(Color.lunaAccent.opacity(0.18))
         .cornerRadius(20)
-        .overlay(Capsule().stroke(Color.lunaAccentLight.opacity(0.4), lineWidth: 1))
+        .overlay(Capsule().stroke(Color.lunaAccentLight.opacity(0.35), lineWidth: 1))
     }
 
     private func typeChip(_ type: ContentType?, label: String) -> some View {
         let isSelected = vm.selectedType == type
         return Button {
+            LunaHaptic.selection()
             withAnimation(.lunaSnappy) {
                 vm.selectedType = isSelected ? nil : type
             }
@@ -285,10 +334,13 @@ struct SearchView: View {
                 .cornerRadius(20)
                 .overlay(
                     Capsule()
-                        .stroke(isSelected ? Color.clear : Color.white.opacity(0.08), lineWidth: 1)
+                        .stroke(
+                            isSelected ? Color.clear : Color.white.opacity(0.07),
+                            lineWidth: 1
+                        )
                 )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(LunaPressStyle(scale: 0.95))
     }
 }
 
@@ -296,9 +348,10 @@ struct SearchView: View {
 
 struct GenreCard: View {
     let genre: Genre
+    var isSelected: Bool = false
     let onTap: () -> Void
 
-    private let gradients: [Genre: ThumbnailStyle] = [
+    private let styleMap: [Genre: ThumbnailStyle] = [
         .action: .rose, .adventure: .amber, .animation: .violet, .comedy: .emerald,
         .crime: .crimson, .documentary: .teal, .drama: .blue, .fantasy: .purple,
         .horror: .crimson, .mystery: .ocean, .romance: .rose, .scifi: .indigo, .thriller: .indigo
@@ -307,16 +360,17 @@ struct GenreCard: View {
     var body: some View {
         Button(action: onTap) {
             ZStack {
-                let style = gradients[genre] ?? .purple
+                let style = styleMap[genre] ?? .purple
+
                 Rectangle()
                     .fill(style.gradient)
                     .cornerRadius(12)
 
-                // Decorative circles
+                // Decorative blob
                 Circle()
-                    .fill(.white.opacity(0.05))
-                    .frame(width: 60)
-                    .offset(x: 30, y: -20)
+                    .fill(.white.opacity(0.06))
+                    .frame(width: 70)
+                    .offset(x: 36, y: -24)
 
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
@@ -331,10 +385,35 @@ struct GenreCard: View {
                     Spacer()
                 }
                 .padding(14)
+
+                // Selected checkmark
+                if isSelected {
+                    VStack {
+                        HStack {
+                            Spacer()
+                            ZStack {
+                                Circle()
+                                    .fill(.white)
+                                    .frame(width: 22, height: 22)
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(style.accentColor.opacity(0.8))
+                            }
+                        }
+                        Spacer()
+                    }
+                    .padding(10)
+                    .transition(.scale.combined(with: .opacity))
+                }
             }
             .frame(height: 90)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(LunaPressStyle())
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(isSelected ? Color.white.opacity(0.6) : Color.clear, lineWidth: 2)
+        )
+        .animation(.lunaSnappy, value: isSelected)
     }
 
     private var genreIcon: String {

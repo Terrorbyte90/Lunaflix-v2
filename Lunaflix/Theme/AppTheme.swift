@@ -50,6 +50,8 @@ enum LunaFont {
     static func body() -> Font { .system(size: 15, weight: .regular, design: .rounded) }
     static func caption() -> Font { .system(size: 12, weight: .medium, design: .rounded) }
     static func tag() -> Font { .system(size: 11, weight: .bold, design: .rounded) }
+    // Monospaced for numbers (time, stats)
+    static func mono(_ size: CGFloat = 13) -> Font { .system(size: size, weight: .semibold, design: .monospaced) }
 }
 
 // MARK: - Gradients
@@ -72,6 +74,18 @@ extension LinearGradient {
         startPoint: .top,
         endPoint: .bottom
     )
+}
+
+// MARK: - Press Style (replaces _onButtonGesture)
+
+struct LunaPressStyle: ButtonStyle {
+    var scale: CGFloat = 0.95
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? scale : 1.0)
+            .animation(.lunaSnappy, value: configuration.isPressed)
+    }
 }
 
 // MARK: - View Modifiers
@@ -140,10 +154,64 @@ extension View {
     }
 }
 
+// MARK: - Haptics
+
+enum LunaHaptic {
+    static func light()    { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
+    static func medium()   { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
+    static func heavy()    { UIImpactFeedbackGenerator(style: .heavy).impactOccurred() }
+    static func success()  { UINotificationFeedbackGenerator().notificationOccurred(.success) }
+    static func selection() { UISelectionFeedbackGenerator().selectionChanged() }
+}
+
 // MARK: - Animations
 
 extension Animation {
     static let lunaSpring = Animation.spring(response: 0.4, dampingFraction: 0.75)
     static let lunaSnappy = Animation.spring(response: 0.3, dampingFraction: 0.85)
     static let lunaSmooth = Animation.easeInOut(duration: 0.35)
+}
+
+// MARK: - Corner Radius Helpers
+
+extension View {
+    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
+        clipShape(RoundedCorner(radius: radius, corners: corners))
+    }
+}
+
+struct RoundedCorner: Shape {
+    var radius: CGFloat = .infinity
+    var corners: UIRectCorner = .allCorners
+
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(
+            roundedRect: rect,
+            byRoundingCorners: corners,
+            cornerRadii: CGSize(width: radius, height: radius)
+        )
+        return Path(path.cgPath)
+    }
+}
+
+// MARK: - Luna Progress Bar
+
+struct LunaProgressBar: View {
+    let progress: Double
+    var height: CGFloat = 3
+    var color: Color = .lunaAccentLight
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.white.opacity(0.12))
+                    .frame(height: height)
+                Capsule()
+                    .fill(color)
+                    .frame(width: max(0, geo.size.width * CGFloat(progress)), height: height)
+            }
+        }
+        .frame(height: height)
+    }
 }

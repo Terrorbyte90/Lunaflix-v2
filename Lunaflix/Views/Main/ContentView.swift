@@ -3,12 +3,38 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
     @State private var selectedContent: LunaContent? = nil
+    @State private var showSplash = true
 
     var body: some View {
+        ZStack {
+            Color.lunaBackground.ignoresSafeArea()
+
+            if showSplash {
+                SplashView()
+                    .transition(.opacity)
+                    .zIndex(10)
+            } else {
+                mainContent
+                    .transition(.opacity)
+                    .zIndex(1)
+            }
+        }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    showSplash = false
+                }
+            }
+        }
+        .animation(.easeInOut(duration: 0.4), value: showSplash)
+    }
+
+    // MARK: - Main Content (tabs)
+
+    private var mainContent: some View {
         ZStack(alignment: .bottom) {
             Color.lunaBackground.ignoresSafeArea()
 
-            // Tab content
             Group {
                 switch appState.selectedTab {
                 case .home:
@@ -44,6 +70,75 @@ struct ContentView: View {
             .ignoresSafeArea(edges: .bottom)
         }
         .ignoresSafeArea(edges: .bottom)
+    }
+}
+
+// MARK: - Splash Screen
+
+struct SplashView: View {
+    @State private var scale: CGFloat = 0.7
+    @State private var opacity: Double = 0
+    @State private var glowOpacity: Double = 0
+    @State private var titleOffset: CGFloat = 20
+
+    var body: some View {
+        ZStack {
+            Color.lunaBackground.ignoresSafeArea()
+
+            // Background glow
+            RadialGradient(
+                colors: [
+                    Color.lunaAccent.opacity(0.3 * glowOpacity),
+                    Color.lunaBackground
+                ],
+                center: .center,
+                startRadius: 0,
+                endRadius: 280
+            )
+            .ignoresSafeArea()
+            .animation(.easeOut(duration: 1.0), value: glowOpacity)
+
+            VStack(spacing: 14) {
+                // Moon icon
+                ZStack {
+                    Circle()
+                        .fill(LinearGradient.lunaAccentGradient)
+                        .frame(width: 80, height: 80)
+                        .opacity(opacity)
+
+                    Image(systemName: "moon.stars.fill")
+                        .font(.system(size: 38, weight: .bold))
+                        .foregroundColor(.white)
+                        .opacity(opacity)
+                }
+                .scaleEffect(scale)
+                .lunaGlow(color: .lunaAccent, radius: 24 * glowOpacity)
+
+                VStack(spacing: 4) {
+                    Text("Lunaflix")
+                        .font(.system(size: 36, weight: .black, design: .rounded))
+                        .foregroundStyle(LinearGradient.lunaAccentGradient)
+                        .opacity(opacity)
+                        .offset(y: titleOffset)
+
+                    Text("Streaming i världsklass")
+                        .font(LunaFont.caption())
+                        .foregroundColor(.lunaTextMuted)
+                        .opacity(opacity * 0.7)
+                        .offset(y: titleOffset)
+                }
+            }
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
+                scale = 1.0
+                opacity = 1.0
+                titleOffset = 0
+            }
+            withAnimation(.easeOut(duration: 0.8).delay(0.2)) {
+                glowOpacity = 1.0
+            }
+        }
     }
 }
 

@@ -2,9 +2,11 @@ import SwiftUI
 
 struct HomeView: View {
     @StateObject private var vm = HomeViewModel()
+    @EnvironmentObject var appState: AppState
     @State private var selectedContent: LunaContent? = nil
     @State private var scrollOffset: CGFloat = 0
-    @State private var showNavBar = false
+
+    private var showNavBackground: Bool { scrollOffset > 280 }
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -40,26 +42,23 @@ struct HomeView: View {
                         }
                     }
                     .padding(.top, 8)
-                    .padding(.bottom, 120) // Tab bar clearance
+                    .padding(.bottom, 120)
                 }
                 .background(
                     GeometryReader { geo in
                         Color.clear.preference(
                             key: ScrollOffsetKey.self,
-                            value: -geo.frame(in: .named("scroll")).minY
+                            value: -geo.frame(in: .named("homeScroll")).minY
                         )
                     }
                 )
             }
-            .coordinateSpace(name: "scroll")
+            .coordinateSpace(name: "homeScroll")
             .onPreferenceChange(ScrollOffsetKey.self) { value in
-                withAnimation(.lunaSnappy) {
-                    showNavBar = value > 300
-                }
                 scrollOffset = value
             }
 
-            // Navigation bar (appears on scroll)
+            // Navigation bar — always present, background fades in on scroll
             navigationBar
         }
         .sheet(item: $selectedContent) { content in
@@ -70,11 +69,11 @@ struct HomeView: View {
     // MARK: - Navigation Bar
 
     private var navigationBar: some View {
-        HStack {
-            // Logo
-            HStack(spacing: 4) {
+        HStack(spacing: 0) {
+            // Logo — always visible
+            HStack(spacing: 5) {
                 Image(systemName: "moon.stars.fill")
-                    .font(.system(size: 22, weight: .bold))
+                    .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(LinearGradient.lunaAccentGradient)
                 Text("Lunaflix")
                     .font(LunaFont.title2())
@@ -83,52 +82,74 @@ struct HomeView: View {
 
             Spacer()
 
-            HStack(spacing: 16) {
+            HStack(spacing: 14) {
                 Button {
-                    // Cast action
+                    // Cast action — placeholder
                 } label: {
                     Image(systemName: "tv.badge.wifi")
                         .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(.lunaTextSecondary)
+                        .foregroundColor(showNavBackground ? .lunaTextSecondary : .white.opacity(0.8))
+                        .frame(width: 36, height: 36)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(LunaPressStyle())
 
                 Button {
-                    // Search shortcut
+                    LunaHaptic.light()
+                    withAnimation(.lunaSnappy) {
+                        appState.selectedTab = .search
+                    }
                 } label: {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(.lunaTextSecondary)
+                        .foregroundColor(showNavBackground ? .lunaTextSecondary : .white.opacity(0.8))
+                        .frame(width: 36, height: 36)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(LunaPressStyle())
 
                 // User avatar
                 Circle()
                     .fill(LinearGradient.lunaAccentGradient)
-                    .frame(width: 32, height: 32)
+                    .frame(width: 30, height: 30)
                     .overlay(
                         Text("L")
-                            .font(.system(size: 14, weight: .black, design: .rounded))
+                            .font(.system(size: 13, weight: .black, design: .rounded))
                             .foregroundColor(.white)
                     )
+                    .lunaGlow(color: .lunaAccent, radius: 8)
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.vertical, 10)
         .background(
             ZStack {
-                if showNavBar {
+                // Always: subtle gradient so logo is readable against hero
+                if !showNavBackground {
+                    LinearGradient(
+                        colors: [Color.black.opacity(0.4), .clear],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .ignoresSafeArea(edges: .top)
+                    .allowsHitTesting(false)
+                }
+
+                // On scroll: frosted glass
+                if showNavBackground {
                     Rectangle()
                         .fill(.ultraThinMaterial)
                         .ignoresSafeArea(edges: .top)
                         .overlay(
                             Rectangle()
-                                .fill(Color.lunaBackground.opacity(0.7))
+                                .fill(Color.lunaBackground.opacity(0.65))
                                 .ignoresSafeArea(edges: .top)
                         )
                         .transition(.opacity)
                 }
             }
+            .animation(.lunaSmooth, value: showNavBackground)
         )
-        .padding(.top, 0)
         .ignoresSafeArea(edges: .top)
     }
 
@@ -142,13 +163,13 @@ struct HomeView: View {
     }
 
     private var skeletonRows: some View {
-        VStack(alignment: .leading, spacing: 24) {
+        VStack(alignment: .leading, spacing: 28) {
             ForEach(0..<3, id: \.self) { _ in
                 VStack(alignment: .leading, spacing: 12) {
                     Rectangle()
-                        .fill(Color.lunaCard)
-                        .frame(width: 160, height: 20)
-                        .cornerRadius(4)
+                        .fill(Color.lunaElevated)
+                        .frame(width: 140, height: 18)
+                        .cornerRadius(5)
                         .shimmering()
 
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -189,17 +210,17 @@ struct ShimmerModifier: ViewModifier {
             .overlay(
                 LinearGradient(
                     colors: [
-                        Color.white.opacity(0.03),
-                        Color.white.opacity(0.12),
-                        Color.white.opacity(0.03)
+                        Color.white.opacity(0.02),
+                        Color.white.opacity(0.10),
+                        Color.white.opacity(0.02)
                     ],
-                    startPoint: .init(x: phase - 0.3, y: 0),
-                    endPoint: .init(x: phase + 0.3, y: 0)
+                    startPoint: .init(x: phase - 0.4, y: 0),
+                    endPoint: .init(x: phase + 0.4, y: 0)
                 )
                 .blendMode(.plusLighter)
                 .onAppear {
-                    withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
-                        phase = 1.3
+                    withAnimation(.linear(duration: 1.6).repeatForever(autoreverses: false)) {
+                        phase = 1.4
                     }
                 }
             )
