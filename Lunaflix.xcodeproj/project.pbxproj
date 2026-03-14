@@ -1,0 +1,494 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		AA000001 /* LunaflixApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100001 /* LunaflixApp.swift */; };
+		AA000002 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100002 /* AppTheme.swift */; };
+		AA000003 /* Content.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100003 /* Content.swift */; };
+		AA000004 /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100004 /* MockData.swift */; };
+		AA000005 /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100005 /* HomeViewModel.swift */; };
+		AA000006 /* SearchViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100006 /* SearchViewModel.swift */; };
+		AA000007 /* ProfileViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100007 /* ProfileViewModel.swift */; };
+		AA000008 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100008 /* ContentView.swift */; };
+		AA000009 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100009 /* HomeView.swift */; };
+		AA000010 /* HeroCarouselView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100010 /* HeroCarouselView.swift */; };
+		AA000011 /* ContentRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100011 /* ContentRowView.swift */; };
+		AA000012 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100012 /* SearchView.swift */; };
+		AA000013 /* ContentDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100013 /* ContentDetailView.swift */; };
+		AA000014 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100014 /* PlayerView.swift */; };
+		AA000015 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100015 /* ProfileView.swift */; };
+		AA000016 /* ContentCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100016 /* ContentCard.swift */; };
+		AA000017 /* LunaTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100017 /* LunaTabBar.swift */; };
+		AA000018 /* DownloadsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100018 /* DownloadsView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		AA100001 /* LunaflixApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LunaflixApp.swift; sourceTree = "<group>"; };
+		AA100002 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
+		AA100003 /* Content.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Content.swift; sourceTree = "<group>"; };
+		AA100004 /* MockData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockData.swift; sourceTree = "<group>"; };
+		AA100005 /* HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModel.swift; sourceTree = "<group>"; };
+		AA100006 /* SearchViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchViewModel.swift; sourceTree = "<group>"; };
+		AA100007 /* ProfileViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViewModel.swift; sourceTree = "<group>"; };
+		AA100008 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		AA100009 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		AA100010 /* HeroCarouselView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeroCarouselView.swift; sourceTree = "<group>"; };
+		AA100011 /* ContentRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentRowView.swift; sourceTree = "<group>"; };
+		AA100012 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
+		AA100013 /* ContentDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentDetailView.swift; sourceTree = "<group>"; };
+		AA100014 /* PlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerView.swift; sourceTree = "<group>"; };
+		AA100015 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		AA100016 /* ContentCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentCard.swift; sourceTree = "<group>"; };
+		AA100017 /* LunaTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LunaTabBar.swift; sourceTree = "<group>"; };
+		AA100018 /* DownloadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsView.swift; sourceTree = "<group>"; };
+		AAPRODUCT /* Lunaflix.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lunaflix.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		AABP0001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		AAGRP0000 = {
+			isa = PBXGroup;
+			children = (
+				AAGRP0001 /* Lunaflix */,
+				AAGRP0099 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		AAGRP0001 /* Lunaflix */ = {
+			isa = PBXGroup;
+			children = (
+				AAGRP0010 /* App */,
+				AAGRP0020 /* Theme */,
+				AAGRP0030 /* Models */,
+				AAGRP0040 /* ViewModels */,
+				AAGRP0050 /* Views */,
+			);
+			path = Lunaflix;
+			sourceTree = "<group>";
+		};
+		AAGRP0010 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				AA100001 /* LunaflixApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		AAGRP0020 /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				AA100002 /* AppTheme.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		AAGRP0030 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				AA100003 /* Content.swift */,
+				AA100004 /* MockData.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		AAGRP0040 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				AA100005 /* HomeViewModel.swift */,
+				AA100006 /* SearchViewModel.swift */,
+				AA100007 /* ProfileViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		AAGRP0050 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				AAGRP0051 /* Main */,
+				AAGRP0052 /* Home */,
+				AAGRP0053 /* Search */,
+				AAGRP0054 /* Detail */,
+				AAGRP0055 /* Player */,
+				AAGRP0056 /* Profile */,
+				AAGRP0057 /* Downloads */,
+				AAGRP0058 /* Components */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		AAGRP0051 /* Main */ = {
+			isa = PBXGroup;
+			children = (
+				AA100008 /* ContentView.swift */,
+			);
+			path = Main;
+			sourceTree = "<group>";
+		};
+		AAGRP0052 /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				AA100009 /* HomeView.swift */,
+				AA100010 /* HeroCarouselView.swift */,
+				AA100011 /* ContentRowView.swift */,
+			);
+			path = Home;
+			sourceTree = "<group>";
+		};
+		AAGRP0053 /* Search */ = {
+			isa = PBXGroup;
+			children = (
+				AA100012 /* SearchView.swift */,
+			);
+			path = Search;
+			sourceTree = "<group>";
+		};
+		AAGRP0054 /* Detail */ = {
+			isa = PBXGroup;
+			children = (
+				AA100013 /* ContentDetailView.swift */,
+			);
+			path = Detail;
+			sourceTree = "<group>";
+		};
+		AAGRP0055 /* Player */ = {
+			isa = PBXGroup;
+			children = (
+				AA100014 /* PlayerView.swift */,
+			);
+			path = Player;
+			sourceTree = "<group>";
+		};
+		AAGRP0056 /* Profile */ = {
+			isa = PBXGroup;
+			children = (
+				AA100015 /* ProfileView.swift */,
+			);
+			path = Profile;
+			sourceTree = "<group>";
+		};
+		AAGRP0057 /* Downloads */ = {
+			isa = PBXGroup;
+			children = (
+				AA100018 /* DownloadsView.swift */,
+			);
+			path = Downloads;
+			sourceTree = "<group>";
+		};
+		AAGRP0058 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				AA100016 /* ContentCard.swift */,
+				AA100017 /* LunaTabBar.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		AAGRP0099 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AAPRODUCT /* Lunaflix.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		AATARGET /* Lunaflix */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AABCL0001 /* Build configuration list for PBXNativeTarget "Lunaflix" */;
+			buildPhases = (
+				AABP0001 /* Frameworks */,
+				AABP0002 /* Sources */,
+				AABP0003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Lunaflix;
+			productName = Lunaflix;
+			productReference = AAPRODUCT /* Lunaflix.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		AAPROJECT /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1530;
+				LastUpgradeCheck = 1530;
+				TargetAttributes = {
+					AATARGET = {
+						CreatedOnToolsVersion = 15.3;
+					};
+				};
+			};
+			buildConfigurationList = AABCL0000 /* Build configuration list for PBXProject "Lunaflix" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = sv;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				sv,
+				en,
+				Base,
+			);
+			mainGroup = AAGRP0000;
+			productRefGroup = AAGRP0099 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				AATARGET /* Lunaflix */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		AABP0003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		AABP0002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA000001 /* LunaflixApp.swift in Sources */,
+				AA000002 /* AppTheme.swift in Sources */,
+				AA000003 /* Content.swift in Sources */,
+				AA000004 /* MockData.swift in Sources */,
+				AA000005 /* HomeViewModel.swift in Sources */,
+				AA000006 /* SearchViewModel.swift in Sources */,
+				AA000007 /* ProfileViewModel.swift in Sources */,
+				AA000008 /* ContentView.swift in Sources */,
+				AA000009 /* HomeView.swift in Sources */,
+				AA000010 /* HeroCarouselView.swift in Sources */,
+				AA000011 /* ContentRowView.swift in Sources */,
+				AA000012 /* SearchView.swift in Sources */,
+				AA000013 /* ContentDetailView.swift in Sources */,
+				AA000014 /* PlayerView.swift in Sources */,
+				AA000015 /* ProfileView.swift in Sources */,
+				AA000016 /* ContentCard.swift in Sources */,
+				AA000017 /* LunaTabBar.swift in Sources */,
+				AA000018 /* DownloadsView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		AAXBC0001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_CYCLES = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		AAXBC0002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_CYCLES = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		AAXBC0003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 2.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = se.lunaflix.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		AAXBC0004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 2.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = se.lunaflix.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		AABCL0000 /* Build configuration list for PBXProject "Lunaflix" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AAXBC0001 /* Debug */,
+				AAXBC0002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AABCL0001 /* Build configuration list for PBXNativeTarget "Lunaflix" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AAXBC0003 /* Debug */,
+				AAXBC0004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = AAPROJECT /* Project object */;
+}
