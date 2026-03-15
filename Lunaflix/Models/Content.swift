@@ -308,7 +308,7 @@ struct User: Identifiable {
         id: UUID(),
         name: "Luna",
         avatar: .purple,
-        isPremium: true,
+        isPremium: false,
         watchlist: [],
         watchHistory: []
     )

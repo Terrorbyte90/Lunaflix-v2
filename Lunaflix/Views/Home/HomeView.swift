@@ -22,7 +22,7 @@ struct HomeView: View {
                             onSelect: { vm.selectHero($0) },
                             onTap: { selectedContent = $0 }
                         )
-                        .frame(height: UIScreen.main.bounds.height * 0.62)
+                        .frame(height: UIScreen.main.bounds.height * 0.50)
                     } else {
                         heroSkeleton
                     }
@@ -158,7 +158,7 @@ struct HomeView: View {
     private var heroSkeleton: some View {
         Rectangle()
             .fill(Color.lunaCard)
-            .frame(height: UIScreen.main.bounds.height * 0.62)
+            .frame(height: UIScreen.main.bounds.height * 0.50)
             .shimmering()
     }
 

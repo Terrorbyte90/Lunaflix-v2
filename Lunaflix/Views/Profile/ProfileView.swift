@@ -6,6 +6,7 @@ struct ProfileView: View {
     @State private var showStreamingPicker = false
     @State private var showDownloadPicker = false
     @State private var showMuxSettings = false
+    @State private var showHelp = false
 
     var body: some View {
         ZStack {
@@ -14,12 +15,6 @@ struct ProfileView: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 0) {
                     profileHeader.padding(.bottom, 24)
-
-                    if vm.user.isPremium {
-                        premiumCard
-                            .padding(.horizontal, 16)
-                            .padding(.bottom, 24)
-                    }
 
                     statsSection
                         .padding(.horizontal, 16)
@@ -43,6 +38,9 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showMuxSettings) {
             MuxSettingsView()
+        }
+        .sheet(isPresented: $showHelp) {
+            HelpView()
         }
         .confirmationDialog(
             "Streamingkvalitet",
@@ -107,23 +105,6 @@ struct ProfileView: View {
                         .font(.system(size: 30, weight: .black, design: .rounded))
                         .foregroundColor(.white)
 
-                    // Premium crown badge
-                    if vm.user.isPremium {
-                        Circle()
-                            .fill(LinearGradient(
-                                colors: [Color.lunaGold, Color.lunaGold.opacity(0.7)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ))
-                            .frame(width: 26, height: 26)
-                            .overlay(
-                                Image(systemName: "crown.fill")
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundColor(.white)
-                            )
-                            .overlay(Circle().stroke(Color.lunaBackground, lineWidth: 2))
-                            .offset(x: 30, y: 30)
-                    }
                 }
                 .padding(.top, 56)
 
@@ -132,82 +113,12 @@ struct ProfileView: View {
                         .font(LunaFont.title1())
                         .foregroundColor(.white)
 
-                    if vm.user.isPremium {
-                        HStack(spacing: 4) {
-                            Image(systemName: "crown.fill")
-                                .font(.system(size: 10))
-                                .foregroundColor(.lunaGold)
-                            Text("Premium")
-                                .font(LunaFont.caption())
-                                .foregroundColor(.lunaGold)
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(Color.lunaGold.opacity(0.15))
-                        .cornerRadius(20)
-                        .overlay(Capsule().stroke(Color.lunaGold.opacity(0.3), lineWidth: 1))
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: - Premium Card
-
-    private var premiumCard: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 20)
-                .fill(LinearGradient(
-                    colors: [Color(hex: "2E1065"), Color(hex: "4C1D95"), Color(hex: "7C3AED")],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ))
-
-            // Decorative blobs
-            Circle()
-                .fill(.white.opacity(0.05))
-                .frame(width: 130)
-                .offset(x: 110, y: -45)
-            Circle()
-                .fill(.white.opacity(0.03))
-                .frame(width: 80)
-                .offset(x: 140, y: 30)
-
-            HStack(spacing: 0) {
-                VStack(alignment: .leading, spacing: 7) {
-                    HStack(spacing: 5) {
-                        Image(systemName: "crown.fill")
-                            .font(.system(size: 12))
-                            .foregroundColor(.lunaGold)
-                        Text("PREMIUM AKTIV")
-                            .font(LunaFont.tag())
-                            .foregroundColor(.lunaGold)
-                            .tracking(0.5)
-                    }
-
-                    Text("Obegränsad\nstreaming")
-                        .font(LunaFont.title1())
-                        .foregroundColor(.white)
-                        .lineSpacing(3)
-
-                    Text("Förnyelse 15 april 2026")
+                    Text("Lunas videoarkiv")
                         .font(LunaFont.caption())
-                        .foregroundColor(.white.opacity(0.55))
+                        .foregroundColor(.lunaTextMuted)
                 }
-
-                Spacer()
-
-                Image(systemName: "moon.stars.fill")
-                    .font(.system(size: 52))
-                    .foregroundStyle(LinearGradient(
-                        colors: [.white.opacity(0.95), .lunaAccentLight],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    ))
             }
-            .padding(20)
         }
-        .frame(height: 135)
     }
 
     // MARK: - Stats
@@ -222,10 +133,8 @@ struct ProfileView: View {
                 columns: [GridItem(.flexible()), GridItem(.flexible())],
                 spacing: 10
             ) {
-                statCard("Tittar på", value: "\(vm.user.watchHistory.count)", icon: "play.circle.fill", color: .lunaAccentLight)
-                statCard("Bevakningslista", value: "\(vm.user.watchlist.count)", icon: "bookmark.fill", color: .lunaCyan)
-                statCard("Nedladdningar", value: "3", icon: "arrow.down.circle.fill", color: .lunaGold)
-                statCard("Prenumeration", value: vm.user.isPremium ? "Premium" : "Bas", icon: "crown.fill", color: .lunaGold)
+                statCard("Videor", value: "\(ContentStore.shared.allContent.count)", icon: "play.circle.fill", color: .lunaAccentLight)
+                statCard("Nedladdningar", value: "0", icon: "arrow.down.circle.fill", color: .lunaGold)
             }
         }
     }
@@ -253,26 +162,29 @@ struct ProfileView: View {
 
     // MARK: - Recent Activity
 
+    @ViewBuilder
     private var recentSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Senast sett")
-                .font(LunaFont.title3())
-                .foregroundColor(.lunaTextPrimary)
-                .padding(.horizontal, 16)
+        if !vm.recentActivity.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Senast sett")
+                    .font(LunaFont.title3())
+                    .foregroundColor(.lunaTextPrimary)
+                    .padding(.horizontal, 16)
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(vm.recentActivity) { content in
-                        Button {
-                            LunaHaptic.light()
-                            selectedContent = content
-                        } label: {
-                            PosterCard(content: content)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(vm.recentActivity) { content in
+                            Button {
+                                LunaHaptic.light()
+                                selectedContent = content
+                            } label: {
+                                PosterCard(content: content)
+                            }
+                            .buttonStyle(LunaPressStyle())
                         }
-                        .buttonStyle(LunaPressStyle())
                     }
+                    .padding(.horizontal, 16)
                 }
-                .padding(.horizontal, 16)
             }
         }
     }
@@ -309,13 +221,6 @@ struct ProfileView: View {
                 }
                 settingsDivider
                 settingsRow {
-                    Button {} label: {
-                        settingsNavRow("Hantera prenumeration", icon: "creditcard.fill", color: .lunaAccentLight, value: nil)
-                    }
-                    .buttonStyle(LunaPressStyle(scale: 0.99))
-                }
-                settingsDivider
-                settingsRow {
                     Button { showMuxSettings = true } label: {
                         settingsNavRow(
                             "Mux-inställningar",
@@ -328,15 +233,8 @@ struct ProfileView: View {
                 }
                 settingsDivider
                 settingsRow {
-                    Button {} label: {
+                    Button { showHelp = true } label: {
                         settingsNavRow("Hjälp & support", icon: "questionmark.circle.fill", color: .lunaCyan, value: nil)
-                    }
-                    .buttonStyle(LunaPressStyle(scale: 0.99))
-                }
-                settingsDivider
-                settingsRow {
-                    Button {} label: {
-                        settingsNavRow("Logga ut", icon: "rectangle.portrait.and.arrow.right", color: .red, value: nil, destructive: true)
                     }
                     .buttonStyle(LunaPressStyle(scale: 0.99))
                 }
@@ -420,4 +318,116 @@ struct ProfileView: View {
 
 #Preview {
     ProfileView()
+}
+
+// MARK: - Help View
+
+struct HelpView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    private let features: [(icon: String, title: String, body: String)] = [
+        ("play.circle.fill",   "Titta på Lunas klipp",    "Bläddra och spela upp alla videor direkt i appen via Mux-streamingtjänsten."),
+        ("arrow.up.circle.fill", "Ladda upp nya klipp",   "Tryck på uppladdningsknappen (↑) på hemskärmen. Välj en video från foton, ange eventuell titel och tryck Starta."),
+        ("calendar",           "Automatiskt inspelningsdatum", "Appen läser inspelningsdatumet direkt ur videofilen och räknar automatiskt ut hur gammal Luna var vid inspelningstillfället."),
+        ("magnifyingglass",    "Sök",                     "Sök på titel eller Lunas ålder i sökfliken."),
+        ("arrow.down.circle.fill", "Nedladdningar",       "Ladda ner klipp för att titta offline. Tryck på nedladdningsikonen på videokortet."),
+        ("gear",               "Mux-inställningar",       "Under Inställningar → Mux-inställningar kopplar du in ditt Mux-konto med Token ID och Token Secret.")
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.lunaBackground.ignoresSafeArea()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+
+                        // About card
+                        VStack(alignment: .leading, spacing: 14) {
+                            HStack(spacing: 10) {
+                                Image(systemName: "moon.stars.fill")
+                                    .font(.system(size: 28))
+                                    .foregroundStyle(LinearGradient.lunaAccentGradient)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Lunaflix")
+                                        .font(LunaFont.title2())
+                                        .foregroundColor(.lunaTextPrimary)
+                                    Text("Lunas personliga videoarkiv")
+                                        .font(LunaFont.caption())
+                                        .foregroundColor(.lunaTextMuted)
+                                }
+                            }
+
+                            Text("Luna ville se videor på sig själv — så skapade pappa Ted den här appen. Lunaflix är ett privat videoarkiv där alla klipp av Luna samlas på ett ställe, strömmas sömlöst och märks upp med hur gammal Luna var när de spelades in.")
+                                .font(LunaFont.body())
+                                .foregroundColor(.lunaTextSecondary)
+                                .lineSpacing(4)
+                        }
+                        .padding(16)
+                        .background(Color.lunaCard)
+                        .cornerRadius(16)
+                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.06), lineWidth: 1))
+
+                        // Features
+                        Text("Funktioner")
+                            .font(LunaFont.title3())
+                            .foregroundColor(.lunaTextPrimary)
+
+                        VStack(spacing: 0) {
+                            ForEach(features.indices, id: \.self) { i in
+                                let f = features[i]
+                                HStack(alignment: .top, spacing: 14) {
+                                    Image(systemName: f.icon)
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(.lunaAccentLight)
+                                        .frame(width: 32, height: 32)
+                                        .background(Color.lunaAccent.opacity(0.15))
+                                        .cornerRadius(8)
+
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(f.title)
+                                            .font(LunaFont.body())
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.lunaTextPrimary)
+                                        Text(f.body)
+                                            .font(LunaFont.caption())
+                                            .foregroundColor(.lunaTextMuted)
+                                            .lineSpacing(3)
+                                    }
+                                }
+                                .padding(14)
+
+                                if i < features.count - 1 {
+                                    Rectangle()
+                                        .fill(Color.white.opacity(0.05))
+                                        .frame(height: 1)
+                                        .padding(.horizontal, 14)
+                                }
+                            }
+                        }
+                        .background(Color.lunaCard)
+                        .cornerRadius(16)
+                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.06), lineWidth: 1))
+
+                        Text("Version 2.0 • Skapad av Ted med ❤️ för Luna")
+                            .font(LunaFont.caption())
+                            .foregroundColor(.lunaTextMuted)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 4)
+                    }
+                    .padding(16)
+                    .padding(.bottom, 40)
+                }
+            }
+            .navigationTitle("Hjälp & info")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Stäng") { dismiss() }
+                        .foregroundColor(.lunaAccentLight)
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
 }

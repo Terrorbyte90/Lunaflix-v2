@@ -35,24 +35,26 @@ struct HeroCarouselView: View {
     @ViewBuilder
     private func heroInfoOverlay(_ content: LunaContent) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Genre chips
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(content.genre, id: \.rawValue) { genre in
-                        Text(genre.displayName)
-                            .font(LunaFont.tag())
-                            .foregroundColor(content.heroGradient.accentColor)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(content.heroGradient.accentColor.opacity(0.15))
-                            .cornerRadius(20)
-                            .overlay(
-                                Capsule()
-                                    .stroke(content.heroGradient.accentColor.opacity(0.3), lineWidth: 1)
-                            )
+            // Genre chips (only shown if content has genres)
+            if !content.genre.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(content.genre, id: \.rawValue) { genre in
+                            Text(genre.displayName)
+                                .font(LunaFont.tag())
+                                .foregroundColor(content.heroGradient.accentColor)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(content.heroGradient.accentColor.opacity(0.15))
+                                .cornerRadius(20)
+                                .overlay(
+                                    Capsule()
+                                        .stroke(content.heroGradient.accentColor.opacity(0.3), lineWidth: 1)
+                                )
+                        }
                     }
+                    .padding(.horizontal, 16)
                 }
-                .padding(.horizontal, 16)
             }
 
             // Title
@@ -64,24 +66,25 @@ struct HeroCarouselView: View {
 
             // Meta info row
             HStack(spacing: 8) {
-                // Rating badge
-                HStack(spacing: 4) {
-                    Image(systemName: "star.fill")
-                        .font(.system(size: 10))
-                        .foregroundColor(.lunaGold)
-                    Text(String(format: "%.1f", content.rating))
-                        .font(LunaFont.mono(12))
-                        .foregroundColor(.lunaGold)
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Color.lunaGold.opacity(0.12))
-                .cornerRadius(6)
-                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.lunaGold.opacity(0.25), lineWidth: 1))
+                if content.rating > 0 {
+                    HStack(spacing: 4) {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.lunaGold)
+                        Text(String(format: "%.1f", content.rating))
+                            .font(LunaFont.mono(12))
+                            .foregroundColor(.lunaGold)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.lunaGold.opacity(0.12))
+                    .cornerRadius(6)
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.lunaGold.opacity(0.25), lineWidth: 1))
 
-                Text("•")
-                    .foregroundColor(.lunaTextMuted)
-                    .font(LunaFont.caption())
+                    Text("•")
+                        .foregroundColor(.lunaTextMuted)
+                        .font(LunaFont.caption())
+                }
 
                 Text(content.metaString)
                     .font(LunaFont.caption())
