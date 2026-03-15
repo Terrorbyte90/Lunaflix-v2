@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProfileView: View {
     @StateObject private var vm = ProfileViewModel()
+    @ObservedObject private var dm = DownloadManager.shared
     @State private var selectedContent: LunaContent? = nil
     @State private var showStreamingPicker = false
     @State private var showDownloadPicker = false
@@ -134,7 +135,7 @@ struct ProfileView: View {
                 spacing: 10
             ) {
                 statCard("Videor", value: "\(ContentStore.shared.allContent.count)", icon: "play.circle.fill", color: .lunaAccentLight)
-                statCard("Nedladdningar", value: "0", icon: "arrow.down.circle.fill", color: .lunaGold)
+                statCard("Nedladdningar", value: "\(dm.downloads.filter { $0.isReady }.count)", icon: "arrow.down.circle.fill", color: .lunaGold)
             }
         }
     }

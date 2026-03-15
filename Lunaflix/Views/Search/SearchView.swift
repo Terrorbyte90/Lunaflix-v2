@@ -26,7 +26,7 @@ struct SearchView: View {
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 28) {
                         if vm.isEmptySearch {
-                            genreGrid
+                            if !vm.featuredGenres.isEmpty { genreGrid }
                             trendingSection
                         } else {
                             if vm.results.isEmpty {
@@ -189,13 +189,9 @@ struct SearchView: View {
     private var trendingSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 6) {
-                Image(systemName: "flame.fill")
-                    .foregroundStyle(LinearGradient(
-                        colors: [.lunaGold, .lunaPink],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    ))
-                Text("Trending nu")
+                Image(systemName: "clock.fill")
+                    .foregroundStyle(LinearGradient.lunaAccentGradient)
+                Text("Senaste videor")
                     .font(LunaFont.title3())
                     .foregroundColor(.lunaTextPrimary)
             }

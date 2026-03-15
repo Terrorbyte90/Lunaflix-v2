@@ -136,13 +136,15 @@ struct WideCard: View {
 
                     Spacer()
 
-                    HStack(spacing: 3) {
-                        Image(systemName: "star.fill")
-                            .font(.system(size: 9))
-                            .foregroundColor(.lunaGold)
-                        Text(content.formattedRating)
-                            .font(LunaFont.mono(10))
-                            .foregroundColor(.lunaGold)
+                    if content.rating > 0 {
+                        HStack(spacing: 3) {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 9))
+                                .foregroundColor(.lunaGold)
+                            Text(content.formattedRating)
+                                .font(LunaFont.mono(10))
+                                .foregroundColor(.lunaGold)
+                        }
                     }
                 }
 
@@ -289,13 +291,15 @@ struct FeaturedCard: View {
                             .cornerRadius(4)
                     }
                     Spacer()
-                    HStack(spacing: 3) {
-                        Image(systemName: "star.fill")
-                            .font(.system(size: 9))
-                            .foregroundColor(.lunaGold)
-                        Text(content.formattedRating)
-                            .font(LunaFont.mono(10))
-                            .foregroundColor(.lunaGold)
+                    if content.rating > 0 {
+                        HStack(spacing: 3) {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 9))
+                                .foregroundColor(.lunaGold)
+                            Text(content.formattedRating)
+                                .font(LunaFont.mono(10))
+                                .foregroundColor(.lunaGold)
+                        }
                     }
                 }
 

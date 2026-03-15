@@ -33,6 +33,7 @@
 		AA000024 /* UploadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100024 /* UploadView.swift */; };
 		AA000025 /* LunaAge.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100025 /* LunaAge.swift */; };
 		AA000026 /* ContentStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100026 /* ContentStore.swift */; };
+		AA000027 /* DownloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100027 /* DownloadManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -62,6 +63,7 @@
 		AA100024 /* UploadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadView.swift; sourceTree = "<group>"; };
 		AA100025 /* LunaAge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LunaAge.swift; sourceTree = "<group>"; };
 		AA100026 /* ContentStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentStore.swift; sourceTree = "<group>"; };
+		AA100027 /* DownloadManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadManager.swift; sourceTree = "<group>"; };
 		AAPRODUCT /* Lunaflix.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lunaflix.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -141,6 +143,7 @@
 				AA100019 /* KeychainService.swift */,
 				AA100020 /* MuxService.swift */,
 				AA100026 /* ContentStore.swift */,
+				AA100027 /* DownloadManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -348,6 +351,7 @@
 				AA000024 /* UploadView.swift in Sources */,
 				AA000025 /* LunaAge.swift in Sources */,
 				AA000026 /* ContentStore.swift in Sources */,
+				AA000027 /* DownloadManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

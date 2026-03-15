@@ -141,7 +141,7 @@ enum AgeRating: String {
     }
 }
 
-enum ThumbnailStyle {
+enum ThumbnailStyle: String, Codable {
     case purple, blue, teal, rose, amber, indigo, emerald, crimson, violet, ocean
 
     var gradient: LinearGradient {

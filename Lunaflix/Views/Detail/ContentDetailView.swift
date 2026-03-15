@@ -7,6 +7,7 @@ struct ContentDetailView: View {
     @State private var isInWatchlist = false
     @State private var selectedSeason = 1
     @State private var selectedNestedContent: LunaContent? = nil
+    @ObservedObject private var dm = DownloadManager.shared
 
     private var filteredEpisodes: [Episode] {
         content.episodes.filter { $0.seasonNumber == selectedSeason }
@@ -169,16 +170,17 @@ struct ContentDetailView: View {
 
             // Meta row
             HStack(spacing: 8) {
-                HStack(spacing: 4) {
-                    Image(systemName: "star.fill")
-                        .font(.system(size: 11))
-                        .foregroundColor(.lunaGold)
-                    Text(content.formattedRating)
-                        .font(LunaFont.mono(13))
-                        .foregroundColor(.lunaGold)
+                if content.rating > 0 {
+                    HStack(spacing: 4) {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(.lunaGold)
+                        Text(content.formattedRating)
+                            .font(LunaFont.mono(13))
+                            .foregroundColor(.lunaGold)
+                    }
+                    Text("·").foregroundColor(.lunaTextMuted)
                 }
-
-                Text("·").foregroundColor(.lunaTextMuted)
                 Text("\(content.year)")
                     .font(LunaFont.body())
                     .foregroundColor(.lunaTextSecondary)
@@ -283,14 +285,33 @@ struct ContentDetailView: View {
             // Download
             Button {
                 LunaHaptic.light()
+                if !dm.isDownloaded(content) && !dm.isDownloading(content) {
+                    dm.download(content)
+                }
             } label: {
+                let downloaded = dm.isDownloaded(content)
+                let downloading = dm.isDownloading(content)
+                let progress = dm.item(for: content)?.progress ?? 0
                 VStack(spacing: 5) {
-                    Image(systemName: "arrow.down.circle")
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundColor(.white)
-                    Text("Ladda ner")
+                    if downloading {
+                        ZStack {
+                            Circle()
+                                .stroke(Color.white.opacity(0.2), lineWidth: 2)
+                                .frame(width: 20, height: 20)
+                            Circle()
+                                .trim(from: 0, to: progress)
+                                .stroke(Color.lunaAccentLight, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                                .frame(width: 20, height: 20)
+                                .rotationEffect(.degrees(-90))
+                        }
+                    } else {
+                        Image(systemName: downloaded ? "checkmark.circle.fill" : "arrow.down.circle")
+                            .font(.system(size: 17, weight: .bold))
+                            .foregroundColor(downloaded ? .lunaAccentLight : .white)
+                    }
+                    Text(downloaded ? "Nedladdad" : downloading ? "\(Int(progress * 100))%" : "Ladda ner")
                         .font(LunaFont.tag())
-                        .foregroundColor(.lunaTextSecondary)
+                        .foregroundColor(downloaded ? .lunaAccentLight : .lunaTextSecondary)
                 }
                 .frame(width: 70)
                 .padding(.vertical, 10)
@@ -298,7 +319,10 @@ struct ContentDetailView: View {
                 .cornerRadius(14)
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        .stroke(
+                            downloaded ? Color.lunaAccentLight.opacity(0.4) : Color.white.opacity(0.08),
+                            lineWidth: 1
+                        )
                 )
             }
             .buttonStyle(LunaPressStyle())
@@ -310,10 +334,10 @@ struct ContentDetailView: View {
     private var statsRow: some View {
         HStack(spacing: 0) {
             statItem(
-                value: content.formattedRating,
+                value: content.rating > 0 ? content.formattedRating : "–",
                 label: "Betyg",
                 icon: "star.fill",
-                color: .lunaGold
+                color: content.rating > 0 ? .lunaGold : .lunaTextMuted
             )
             Rectangle()
                 .fill(Color.white.opacity(0.08))
