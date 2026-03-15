@@ -114,7 +114,7 @@ final class MuxViewModel: ObservableObject {
 
             // 2. Upload binary data
             uploadPhase = .uploading
-            try await MuxService.shared.uploadVideo(fileURL: fileURL, to: putURL) { [weak self] progress in
+            try await MuxService.shared.uploadVideo(fileURL: fileURL, to: putURL) { [weak self] progress, _ in
                 Task { @MainActor [weak self] in
                     self?.uploadProgress = progress
                 }

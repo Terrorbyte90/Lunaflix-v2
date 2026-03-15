@@ -96,7 +96,7 @@ actor MuxService {
 
     // MARK: - Upload Video
 
-    func uploadVideo(fileURL: URL, to uploadURL: URL, progressHandler: @escaping (Double) -> Void) async throws {
+    func uploadVideo(fileURL: URL, to uploadURL: URL, progressHandler: @escaping (Double, Double) -> Void) async throws {
         let data = try Data(contentsOf: fileURL)
         var req = URLRequest(url: uploadURL)
         req.httpMethod = "PUT"
@@ -159,9 +159,11 @@ actor MuxService {
 // MARK: - Upload Progress Delegate
 
 private final class UploadProgressDelegate: NSObject, URLSessionTaskDelegate {
-    let progressHandler: (Double) -> Void
+    let progressHandler: (Double, Double) -> Void   // (progress 0–1, speedBytesPerSec)
+    private var lastSample: (bytes: Int64, time: TimeInterval) = (0, 0)
+    private var lastKnownSpeed: Double = 0
 
-    init(progressHandler: @escaping (Double) -> Void) {
+    init(progressHandler: @escaping (Double, Double) -> Void) {
         self.progressHandler = progressHandler
     }
 
@@ -170,7 +172,18 @@ private final class UploadProgressDelegate: NSObject, URLSessionTaskDelegate {
                     totalBytesExpectedToSend: Int64) {
         guard totalBytesExpectedToSend > 0 else { return }
         let progress = Double(totalBytesSent) / Double(totalBytesExpectedToSend)
-        DispatchQueue.main.async { self.progressHandler(progress) }
+        let now = Date().timeIntervalSinceReferenceDate
+        if lastSample.time > 0 {
+            let dt = now - lastSample.time
+            if dt >= 0.3 {
+                lastKnownSpeed = Double(totalBytesSent - lastSample.bytes) / dt
+                lastSample = (totalBytesSent, now)
+            }
+        } else {
+            lastSample = (totalBytesSent, now)
+        }
+        let speed = lastKnownSpeed
+        DispatchQueue.main.async { self.progressHandler(progress, speed) }
     }
 }
 
