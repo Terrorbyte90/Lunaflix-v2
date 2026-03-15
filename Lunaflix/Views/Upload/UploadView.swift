@@ -35,7 +35,7 @@ struct UploadView: View {
             }
         }
         .preferredColorScheme(.dark)
-        .onChange(of: vm.selectedVideoItem) { _, newItem in
+        .onChange(of: vm.selectedVideoItem) { newItem in
             Task { await vm.handlePickedItem(newItem) }
         }
     }

@@ -16,8 +16,7 @@ struct HeroCarouselView: View {
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
-            .onChange(of: currentIndex) { oldVal, newVal in
-                guard oldVal != newVal else { return }
+            .onChange(of: currentIndex) { newVal in
                 LunaHaptic.light()
                 onSelect(newVal)
             }

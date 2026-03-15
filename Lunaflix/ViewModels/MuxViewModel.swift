@@ -172,7 +172,7 @@ final class MuxViewModel: ObservableObject {
     private func pollUploadForAssetID(uploadID: String, maxAttempts: Int = 20) async throws -> String? {
         for _ in 0..<maxAttempts {
             try await Task.sleep(for: .seconds(2))
-            if let assetID = try await fetchUploadAssetID(uploadID: uploadID) { return assetID }
+            if let assetID = try await fetchUploadAssetID(uploadID) { return assetID }
         }
         return nil
     }

@@ -7,6 +7,7 @@ final class HomeViewModel: ObservableObject {
     @Published var categories: [ContentCategory] = []
     @Published var currentHeroIndex: Int = 0
     @Published var isLoading: Bool = true
+    @Published var isConfigured: Bool = false
 
     private var heroTimer: AnyCancellable?
     private var loadTask: Task<Void, Never>? = nil
@@ -20,65 +21,74 @@ final class HomeViewModel: ObservableObject {
         isLoading = true
         loadTask?.cancel()
         loadTask = Task {
-            try? await Task.sleep(for: .milliseconds(350))
             guard !Task.isCancelled else { return }
+            isConfigured = KeychainService.hasMuxCredentials
 
-            heroContents = MockData.heroContent
-            var cats = MockData.categories
-
-            // Load Mux assets if credentials are set
-            if KeychainService.hasMuxCredentials {
-                if let muxCategory = await loadMuxCategory() {
-                    cats.insert(muxCategory, at: 0)
-                }
+            guard isConfigured else {
+                heroContents = []
+                categories = []
+                isLoading = false
+                return
             }
 
-            categories = cats
+            do {
+                let assets = try await MuxService.shared.listAssets()
+                guard !Task.isCancelled else { return }
+
+                let ready = assets
+                    .filter { $0.isReady }
+                    .sorted { ($0.createdAt ?? 0) > ($1.createdAt ?? 0) }
+
+                let contents = ready.map { LunaContent.fromMuxAsset($0) }
+
+                heroContents = Array(contents.prefix(5))
+                categories = buildCategories(from: contents)
+                ContentStore.shared.update(contents)
+            } catch {
+                heroContents = []
+                categories = []
+            }
+
             isLoading = false
         }
     }
 
-    private func loadMuxCategory() async -> ContentCategory? {
-        do {
-            let assets = try await MuxService.shared.listAssets()
-            let readyAssets = assets.filter { $0.isReady }
-            guard !readyAssets.isEmpty else { return nil }
+    private func buildCategories(from contents: [LunaContent]) -> [ContentCategory] {
+        guard !contents.isEmpty else { return [] }
 
-            let contents: [LunaContent] = readyAssets.map { asset in
-                let recordingDate = asset.recordingDate
-                let year = recordingDate.map { Calendar.current.component(.year, from: $0) }
-                    ?? Calendar.current.component(.year, from: Date())
-                return LunaContent(
-                    title: asset.displayTitle,
-                    description: asset.lunaAgeAtRecording ?? "Video från Lunas bibliotek.",
-                    type: .movie,
-                    genre: [.documentary],
-                    rating: 0,
-                    year: year,
-                    duration: asset.formattedDuration,
-                    ageRating: .all,
-                    thumbnailGradient: thumbnailStyle(for: asset.id),
-                    heroGradient: thumbnailStyle(for: asset.id),
-                    muxPlaybackID: asset.primaryPlaybackID,
-                    recordingDate: recordingDate
-                )
-            }
+        let calendar = Calendar.current
+        let cutoff = calendar.date(byAdding: .day, value: -60, to: Date()) ?? Date()
+        let recent = contents.filter { $0.recordingDate.map { $0 > cutoff } ?? false }
+        let older  = contents.filter { $0.recordingDate.map { $0 <= cutoff } ?? true }
 
-            return ContentCategory(
+        var cats: [ContentCategory] = []
+
+        if !recent.isEmpty {
+            cats.append(ContentCategory(
+                title: "Senaste klippen",
+                subtitle: "\(recent.count) videor",
+                contents: recent,
+                style: .wideCard
+            ))
+        }
+        if !older.isEmpty {
+            cats.append(ContentCategory(
+                title: older.isEmpty ? "Mitt bibliotek" : "Äldre klipp",
+                subtitle: "\(older.count) videor",
+                contents: older,
+                style: .wideCard
+            ))
+        }
+        if cats.isEmpty {
+            cats.append(ContentCategory(
                 title: "Mitt bibliotek",
                 subtitle: "\(contents.count) videor",
                 contents: contents,
                 style: .wideCard
-            )
-        } catch {
-            return nil
+            ))
         }
-    }
 
-    private func thumbnailStyle(for id: String) -> ThumbnailStyle {
-        let styles: [ThumbnailStyle] = [.purple, .blue, .teal, .rose, .amber, .indigo, .emerald, .crimson, .violet, .ocean]
-        let hash = abs(id.hashValue)
-        return styles[hash % styles.count]
+        return cats
     }
 
     private func startHeroTimer() {

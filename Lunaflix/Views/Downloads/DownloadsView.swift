@@ -3,7 +3,7 @@ import SwiftUI
 struct DownloadsView: View {
     @State private var selectedContent: LunaContent? = nil
     @State private var deleteTarget: LunaContent? = nil
-    @State private var downloads = Array(MockData.allContent.prefix(3))
+    @State private var downloads: [LunaContent] = []
 
     private let storageUsed: Double = 0.24  // 24%
     private let storageTotal = "10 GB"

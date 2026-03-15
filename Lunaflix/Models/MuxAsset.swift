@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Mux Asset
 
-struct MuxAsset: Identifiable, Decodable {
+struct MuxAsset: Identifiable, Decodable, Equatable {
     let id: String
     let status: MuxAssetStatus
     let playbackIDs: [MuxPlaybackID]?
@@ -96,7 +96,7 @@ struct MuxPassthroughMeta: Codable {
 
 // MARK: - Asset status
 
-enum MuxAssetStatus: String, Decodable {
+enum MuxAssetStatus: String, Decodable, Equatable {
     case preparing
     case ready
     case errored
@@ -108,7 +108,7 @@ enum MuxAssetStatus: String, Decodable {
     }
 }
 
-struct MuxPlaybackID: Decodable {
+struct MuxPlaybackID: Decodable, Equatable {
     let id: String
     let policy: String
 }

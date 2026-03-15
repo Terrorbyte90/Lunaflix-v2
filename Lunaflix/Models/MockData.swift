@@ -72,8 +72,8 @@ enum MockData {
             duration: "1t 32min",
             ageRating: .all,
             thumbnailGradient: .violet,
-            isNew: true,
-            isTrending: true
+            isTrending: true,
+            isNew: true
         ),
         LunaContent(
             title: "Neonblod",

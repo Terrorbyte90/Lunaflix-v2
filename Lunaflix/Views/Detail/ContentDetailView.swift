@@ -59,7 +59,9 @@ struct ContentDetailView: View {
         }
         .ignoresSafeArea(edges: .top)
         .fullScreenCover(isPresented: $showPlayer) {
-            PlayerView(content: content)
+            let library = ContentStore.shared.allContent
+            let playlist = library.isEmpty ? [content] : library
+            PlayerView(content: content, playlist: playlist)
         }
         .sheet(item: $selectedNestedContent) { item in
             ContentDetailView(content: item)
@@ -455,32 +457,7 @@ struct ContentDetailView: View {
     // MARK: - Similar
 
     private var similarSection: some View {
-        let similar = MockData.allContent
-            .filter { $0.id != content.id }
-            .filter { !Set($0.genre).isDisjoint(with: Set(content.genre)) }
-            .prefix(8)
-
-        return VStack(alignment: .leading, spacing: 12) {
-            Text("Du kanske också gillar")
-                .font(LunaFont.title3())
-                .foregroundColor(.lunaTextPrimary)
-                .padding(.horizontal, 16)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(Array(similar)) { item in
-                        Button {
-                            LunaHaptic.light()
-                            selectedNestedContent = item
-                        } label: {
-                            PosterCard(content: item)
-                        }
-                        .buttonStyle(LunaPressStyle())
-                    }
-                }
-                .padding(.horizontal, 16)
-            }
-        }
+        EmptyView()
     }
 
     // MARK: - Top Nav
@@ -603,5 +580,10 @@ struct EpisodeRow: View {
 }
 
 #Preview {
-    ContentDetailView(content: MockData.movies[0])
+    ContentDetailView(content: LunaContent(
+        title: "Förhandsgranskning",
+        description: "Lunas klipp",
+        type: .movie, genre: [], rating: 0, year: 2025,
+        duration: "2 min", thumbnailGradient: .violet
+    ))
 }

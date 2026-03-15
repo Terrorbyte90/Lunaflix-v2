@@ -309,7 +309,41 @@ struct User: Identifiable {
         name: "Luna",
         avatar: .purple,
         isPremium: true,
-        watchlist: Array(MockData.allContent.prefix(6)),
-        watchHistory: Array(MockData.allContent.dropFirst(3).prefix(5))
+        watchlist: [],
+        watchHistory: []
     )
+}
+
+// MARK: - Mux Asset Mapping
+
+extension LunaContent {
+    static func fromMuxAsset(_ asset: MuxAsset) -> LunaContent {
+        let recordingDate = asset.recordingDate
+        let year = recordingDate.map { Calendar.current.component(.year, from: $0) }
+            ?? Calendar.current.component(.year, from: Date())
+        let daysAgo = recordingDate.map {
+            Calendar.current.dateComponents([.day], from: $0, to: Date()).day ?? 99
+        } ?? 99
+        let isNew = daysAgo < 30
+
+        let styles: [ThumbnailStyle] = [.purple, .blue, .teal, .rose, .amber,
+                                        .indigo, .emerald, .crimson, .violet, .ocean]
+        let style = styles[abs(asset.id.hashValue) % styles.count]
+
+        return LunaContent(
+            title: asset.displayTitle,
+            description: asset.lunaAgeAtRecording ?? "Video från Lunas bibliotek.",
+            type: .movie,
+            genre: [],
+            rating: 0,
+            year: year,
+            duration: asset.formattedDuration,
+            ageRating: .all,
+            thumbnailGradient: style,
+            heroGradient: style,
+            isNew: isNew,
+            muxPlaybackID: asset.primaryPlaybackID,
+            recordingDate: recordingDate
+        )
+    }
 }

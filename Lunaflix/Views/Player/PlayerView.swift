@@ -288,6 +288,7 @@ struct PlayerView: View {
     @State private var isFullscreen  = false
     @State private var showSettings  = false
     @State private var hideTask: Task<Void, Never>? = nil
+    private let controlHideDelay: Double = 3.0
     @State private var doubleTapSide: DoubleTapSide? = nil
 
     init(content: LunaContent, playlist: [LunaContent] = []) {
