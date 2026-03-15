@@ -5,23 +5,29 @@ import Combine
 final class SearchViewModel: ObservableObject {
     @Published var query: String = ""
     @Published var results: [LunaContent] = []
+    @Published var selectedGenre: Genre? = nil
     @Published var selectedType: ContentType? = nil
     @Published var isSearching: Bool = false
 
     private var allContent: [LunaContent] = []
     private var cancellables = Set<AnyCancellable>()
 
+    let allTypes = ContentType.allCases
     // No genres in personal library
     let featuredGenres: [Genre] = []
 
     var trendingContent: [LunaContent] { Array(allContent.prefix(8)) }
-    var hasActiveFilter: Bool { selectedType != nil }
+    var hasActiveFilter: Bool { selectedGenre != nil || selectedType != nil }
     var isEmptySearch: Bool { query.isEmpty && !hasActiveFilter }
 
     init() {
         $query
             .debounce(for: .milliseconds(250), scheduler: RunLoop.main)
             .removeDuplicates()
+            .sink { [weak self] _ in self?.performSearch() }
+            .store(in: &cancellables)
+
+        $selectedGenre
             .sink { [weak self] _ in self?.performSearch() }
             .store(in: &cancellables)
 
@@ -67,6 +73,7 @@ final class SearchViewModel: ObservableObject {
     func clearFilters() {
         withAnimation(.lunaSnappy) {
             query = ""
+            selectedGenre = nil
             selectedType = nil
             results = []
         }
