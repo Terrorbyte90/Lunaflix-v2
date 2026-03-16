@@ -3,7 +3,6 @@ import SwiftUI
 @MainActor
 final class ProfileViewModel: ObservableObject {
     @Published var user: User
-    @Published var showingSettings = false
     @Published var notificationsEnabled = true
     @Published var autoplayEnabled = true
     @Published var downloadQuality: DownloadQuality = .high
@@ -24,15 +23,6 @@ final class ProfileViewModel: ObservableObject {
 
     init(user: User = User.mock) {
         self.user = user
-    }
-
-    var stats: [(label: String, value: String)] {
-        [
-            ("Tittar på", "\(user.watchHistory.count) titlar"),
-            ("Bevakningslista", "\(user.watchlist.count) titlar"),
-            ("Nedladdningar", "3 titlar"),
-            ("Prenumeration", user.isPremium ? "Premium" : "Bas")
-        ]
     }
 
     var recentActivity: [LunaContent] { Array(user.watchHistory.prefix(4)) }

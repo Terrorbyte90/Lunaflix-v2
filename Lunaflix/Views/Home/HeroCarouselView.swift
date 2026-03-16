@@ -16,7 +16,7 @@ struct HeroCarouselView: View {
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
-            .onChange(of: currentIndex) { newVal in
+            .onChange(of: currentIndex) { _, newVal in
                 LunaHaptic.light()
                 onSelect(newVal)
             }
@@ -120,20 +120,6 @@ struct HeroCarouselView: View {
                 .buttonStyle(LunaPressStyle(scale: 0.97))
 
                 Spacer()
-
-                // Watchlist
-                Button {
-                    LunaHaptic.light()
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.white)
-                        .frame(width: 44, height: 44)
-                        .background(.ultraThinMaterial)
-                        .clipShape(Circle())
-                        .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 1))
-                }
-                .buttonStyle(LunaPressStyle())
             }
             .padding(.horizontal, 16)
 

@@ -239,7 +239,10 @@ struct MuxSettingsView: View {
 
             HStack(spacing: 10) {
                 quickLinkButton("Ladda upp video", icon: "arrow.up.circle.fill") {
-                    // Handled by ContentView FAB / upload sheet
+                    dismiss()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        NotificationCenter.default.post(name: .openUploadSheet, object: nil)
+                    }
                 }
                 quickLinkButton("Mux Dashboard", icon: "safari.fill") {
                     if let url = URL(string: "https://dashboard.mux.com") {

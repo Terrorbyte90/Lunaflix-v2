@@ -1,87 +1,138 @@
-# Lunaflix v2 — Modern iOS Streaming App
+# Lunaflix
 
-En komplett, modern iOS streaming-app byggd med SwiftUI. Inspirerad av Netflix, Apple TV+ och Disney+ med ett unikt mörkt "luna"-tema.
+A personal iOS video archive app for Luna's clips, built with SwiftUI and Mux Video.
 
-## Funktioner
+## What it is
 
-### Design
-- **Djupt mörkt tema** — `#080810` bakgrund med lila/cyan accenter
-- **Glassmorfism** — `.ultraThinMaterial` kort och transparenta ytor
-- **Hero-karusell** — automatisk bildväxling med `TabView` + paginering
-- **Flytande animationer** — `.spring()`, `.easeInOut` genomgående
-- **Shimmer-laddning** — Netflix-liknande skeleton-loader
-- **Matchad geometri** — smooth tab-switching med `@Namespace`
+Lunaflix is a private family video app that stores, streams, and organizes clips of Luna (born July 2, 2023). Videos are uploaded to [Mux](https://mux.com) and streamed via HLS. Each clip displays Luna's exact age at the time of recording.
 
-### Vyer
-| Vy | Beskrivning |
+## Tech stack
+
+| Layer | Technology |
 |---|---|
-| **HomeView** | Hero-karusell + kategorirader (Standard, Wide, Top 10, Featured, Continue Watching) |
-| **SearchView** | Sökfält + genre-grid + dynamiska resultatsraster |
-| **ContentDetailView** | Fullständig innehållssida med avsnittslista, statistik, handlingsknapp |
-| **PlayerView** | Videospelare med sökning, undertextsinst., play/pause, hoppa 10s |
-| **ProfileView** | Användarprofil, prenumerationskort, inställningar |
-| **DownloadsView** | Nedladdade titlar med lagringsindikatot |
+| UI | SwiftUI (iOS 17+) |
+| Architecture | MVVM — `ObservableObject` / `@Published` / `@MainActor` |
+| Video backend | Mux Video API (direct upload + HLS streaming) |
+| Local download | `AVAssetDownloadURLSession` (background HLS download) |
+| Photo library | `PhotosUI` / `PhotosPickerItem` + `Transferable` |
+| Metadata | AVFoundation — extract recording date from video file |
+| Credentials | Keychain (`KeychainService`) |
+| State sharing | `ContentStore` (in-memory shared cache) |
+| Reactive | Combine — debounced search |
 
-## Arkitektur
+## Architecture
+
+```
+LunaflixApp
+└── ContentView (tab router + upload FAB)
+    ├── HomeView          ← HomeViewModel ← ContentStore
+    ├── SearchView        ← SearchViewModel ← MuxService
+    ├── DownloadsView     ← DownloadManager (AVAssetDownloadURLSession)
+    └── ProfileView       ← ProfileViewModel
+
+Sheets:
+    ContentDetailView     ← presented from any tab
+    UploadView            ← UploadManager (multi-job, review → upload → poll)
+    MuxSettingsView       ← MuxSettingsViewModel
+    PlayerView            ← AVQueuePlayer + OrientationManager
+```
+
+### Upload flow
+
+1. User picks a video from the photo library via `PhotosPicker`
+2. `UploadManager` extracts the file and recording date metadata (AVFoundation)
+3. Job pauses at **Review** phase — user can edit title and recording date
+4. On confirm: Mux direct-upload URL is requested, file is uploaded, Mux asset is polled until ready
+5. Recording date is stored in Mux's `passthrough` field as ISO8601 JSON
+
+### Age display
+
+`LunaAge` computes Luna's age in a human-readable Swedish string ("2 år 3 mån", "8 månader") from her birthday (July 2, 2023) and a given date. Used in `ContentDetailView` (stats row) and `UploadView` (live preview while editing date).
+
+## Setup
+
+1. Clone the repo and open `Lunaflix.xcodeproj` in Xcode 15+
+2. Build and run on an iOS 17+ device or simulator
+3. In the app, go to **Profil → Mux-inställningar**
+4. Enter your Mux **Token ID** and **Token Secret** (needs `video:read` and `video:write` scopes)
+5. Tap **Spara och testa** — the app will verify the connection and show your asset count
+6. Upload videos using the **↑** FAB button or via **Snabblänkar → Ladda upp video**
+
+## Project structure
 
 ```
 Lunaflix/
 ├── App/
-│   └── LunaflixApp.swift        # @main entry, AppState
-├── Theme/
-│   └── AppTheme.swift           # Färger, typografi, animationer, modifiers
+│   └── LunaflixApp.swift          # Entry point, AppDelegate, OrientationManager, AppState
 ├── Models/
-│   ├── Content.swift            # LunaContent, Episode, User, Genre, ThumbnailStyle
-│   └── MockData.swift           # Exempelinnehåll (filmer, serier, dokumentärer)
+│   ├── Content.swift              # LunaContent, ContentCategory, Genre, LunaAge
+│   └── MuxAsset.swift             # Codable Mux API response models
+├── Services/
+│   ├── MuxService.swift           # Mux REST API client
+│   ├── KeychainService.swift      # Keychain read/write for API credentials
+│   ├── ContentStore.swift         # Shared in-memory content cache
+│   ├── DownloadManager.swift      # AVAssetDownloadURLSession HLS downloads
+│   └── UploadManager.swift        # Multi-job upload orchestration
 ├── ViewModels/
-│   ├── HomeViewModel.swift      # Hero-timer, kategoriladdning
-│   ├── SearchViewModel.swift    # Realtidssökning + filtrering
-│   └── ProfileViewModel.swift   # Användardata, inställningar
-└── Views/
-    ├── Main/ContentView.swift   # Tab-navigation med custom tab bar
-    ├── Home/                    # HomeView, HeroCarouselView, ContentRowView
-    ├── Search/SearchView.swift  # Sök + genre-filter
-    ├── Detail/                  # ContentDetailView, EpisodeRow
-    ├── Player/PlayerView.swift  # Videospelargränssnitt
-    ├── Profile/ProfileView.swift
-    ├── Downloads/DownloadsView.swift
-    └── Components/              # PosterCard, WideCard, Top10Card, FeaturedCard, LunaTabBar
+│   ├── HomeViewModel.swift
+│   ├── SearchViewModel.swift
+│   ├── ProfileViewModel.swift
+│   └── MuxViewModel.swift         # VideoMetadata (AVFoundation), VideoTransferItem
+├── Views/
+│   ├── Main/ContentView.swift     # Tab router + splash screen
+│   ├── Home/                      # HomeView, HeroCarouselView, ContentRowView
+│   ├── Search/SearchView.swift
+│   ├── Downloads/DownloadsView.swift
+│   ├── Profile/ProfileView.swift
+│   ├── Detail/ContentDetailView.swift
+│   ├── Upload/UploadView.swift
+│   ├── Player/PlayerView.swift
+│   ├── Settings/MuxSettingsView.swift
+│   └── Components/                # ContentCard, LunaTabBar, AppTheme
+└── Resources/                     # Assets, fonts, Info.plist
 ```
 
-## Krav
-- iOS 16.0+
-- Xcode 15+
-- Swift 5.9+
+## Design system
 
-## Öppna projektet
-
-```bash
-open Lunaflix.xcodeproj
-```
-
-## Design-system
-
-### Färger
-| Namn | Hex | Användning |
+### Colors
+| Name | Hex | Usage |
 |---|---|---|
-| `lunaBackground` | `#080810` | Huvudbakgrund |
-| `lunaSurface` | `#0F0F1A` | Ytbakgrund |
-| `lunaCard` | `#161625` | Kortkomponenter |
-| `lunaAccent` | `#7C3AED` | Primärfärg (lila) |
-| `lunaAccentLight` | `#A78BFA` | Ljus accent |
-| `lunaCyan` | `#06B6D4` | Sekundär accent |
-| `lunaGold` | `#F59E0B` | Betyg och premium |
+| `lunaBackground` | `#080810` | Main background |
+| `lunaSurface` | `#0F0F1A` | Surface background |
+| `lunaCard` | `#161625` | Card components |
+| `lunaAccent` | `#7C3AED` | Primary accent (purple) |
+| `lunaAccentLight` | `#A78BFA` | Light accent |
+| `lunaCyan` | `#06B6D4` | Secondary accent |
 
-### Typografi (`LunaFont`)
+### Typography (`LunaFont`)
 - `hero()` — 34pt, Black, Rounded
 - `title1()` — 24pt, Bold, Rounded
 - `title2()` — 20pt, Bold, Rounded
 - `title3()` — 17pt, Semibold, Rounded
 - `body()` — 15pt, Regular, Rounded
 - `caption()` — 12pt, Medium, Rounded
-- `tag()` — 11pt, Bold, Rounded
 
-### Animationer
+### Animations
 - `Animation.lunaSpring` — response 0.4, damping 0.75
 - `Animation.lunaSnappy` — response 0.3, damping 0.85
 - `Animation.lunaSmooth` — easeInOut 0.35s
+
+## Requirements
+
+- iOS 17.0+
+- Xcode 15.0+
+- A Mux account with Token ID + Token Secret
+
+## Status
+
+- [x] Mux credential setup and connection test
+- [x] HLS video streaming
+- [x] Video upload with review step (title + recording date)
+- [x] Recording date extraction from video metadata
+- [x] Luna's age display per clip
+- [x] Background HLS downloads
+- [x] Search by title
+- [x] Offline download management
+- [ ] Push notifications for processing completion
+- [ ] iCloud sync for download metadata
+- [ ] Shared album / invite link generation

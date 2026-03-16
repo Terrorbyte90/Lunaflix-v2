@@ -26,7 +26,6 @@ struct SearchView: View {
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 28) {
                         if vm.isEmptySearch {
-                            if !vm.featuredGenres.isEmpty { genreGrid }
                             trendingSection
                         } else {
                             if vm.results.isEmpty {
@@ -78,7 +77,7 @@ struct SearchView: View {
                     .foregroundColor(searchFocused ? .lunaAccentLight : .lunaTextMuted)
                     .animation(.lunaSnappy, value: searchFocused)
 
-                TextField("Sök filmer, serier, dokumentärer...", text: $vm.query)
+                TextField("Sök bland Lunas klipp...", text: $vm.query)
                     .font(LunaFont.body())
                     .foregroundColor(.lunaTextPrimary)
                     .focused($searchFocused)
@@ -111,31 +110,6 @@ struct SearchView: View {
             .padding(.horizontal, 16)
             .animation(.lunaSnappy, value: searchFocused)
 
-            // Active filter chips
-            if vm.hasActiveFilter {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        if let genre = vm.selectedGenre {
-                            filterChip(genre.displayName, icon: "xmark") {
-                                LunaHaptic.light()
-                                vm.selectedGenre = nil
-                            }
-                        }
-                        Button {
-                            LunaHaptic.light()
-                            vm.clearFilters()
-                        } label: {
-                            Text("Rensa")
-                                .font(LunaFont.caption())
-                                .foregroundColor(.lunaTextMuted)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                }
-                .transition(.move(edge: .top).combined(with: .opacity))
-            }
         }
         .padding(.bottom, 8)
         .background(Color.lunaBackground)

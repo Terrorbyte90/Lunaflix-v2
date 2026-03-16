@@ -28,18 +28,6 @@ struct ContentRowView: View {
                 }
             }
             Spacer()
-            Button {
-                LunaHaptic.light()
-            } label: {
-                HStack(spacing: 3) {
-                    Text("Se alla")
-                        .font(LunaFont.caption())
-                        .foregroundColor(.lunaAccentLight)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(.lunaAccentLight)
-                }
-            }
         }
         .padding(.horizontal, 16)
     }

@@ -48,8 +48,6 @@ final class OrientationManager: ObservableObject {
 final class AppState: ObservableObject {
     @Published var selectedTab: Tab = .home
     @Published var currentUser: User = User.mock
-    @Published var isLoggedIn: Bool = true
-    @Published var presentedContent: LunaContent? = nil
 }
 
 // MARK: - Tab Definition

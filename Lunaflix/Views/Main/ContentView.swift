@@ -31,6 +31,9 @@ struct ContentView: View {
         .sheet(isPresented: $showUpload) {
             UploadView()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .openUploadSheet)) { _ in
+            showUpload = true
+        }
     }
 
     // MARK: - Main Content (tabs)
@@ -152,7 +155,7 @@ struct SplashView: View {
                         .opacity(opacity)
                         .offset(y: titleOffset)
 
-                    Text("Streaming i världsklass")
+                    Text("Lunas videoarkiv")
                         .font(LunaFont.caption())
                         .foregroundColor(.lunaTextMuted)
                         .opacity(opacity * 0.7)
@@ -171,6 +174,12 @@ struct SplashView: View {
             }
         }
     }
+}
+
+// MARK: - Notification Names
+
+extension Notification.Name {
+    static let openUploadSheet = Notification.Name("LunaOpenUploadSheet")
 }
 
 #Preview {

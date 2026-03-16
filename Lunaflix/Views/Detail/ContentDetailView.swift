@@ -334,15 +334,6 @@ struct ContentDetailView: View {
     private var statsRow: some View {
         HStack(spacing: 0) {
             statItem(
-                value: content.rating > 0 ? content.formattedRating : "–",
-                label: "Betyg",
-                icon: "star.fill",
-                color: content.rating > 0 ? .lunaGold : .lunaTextMuted
-            )
-            Rectangle()
-                .fill(Color.white.opacity(0.08))
-                .frame(width: 1, height: 36)
-            statItem(
                 value: "\(content.year)",
                 label: "År",
                 icon: "calendar",
@@ -352,11 +343,22 @@ struct ContentDetailView: View {
                 .fill(Color.white.opacity(0.08))
                 .frame(width: 1, height: 36)
             statItem(
-                value: content.type.rawValue,
-                label: "Typ",
-                icon: content.type.icon,
+                value: content.duration,
+                label: "Längd",
+                icon: "clock.fill",
                 color: .lunaCyan
             )
+            if let date = content.recordingDate {
+                Rectangle()
+                    .fill(Color.white.opacity(0.08))
+                    .frame(width: 1, height: 36)
+                statItem(
+                    value: LunaAge.ageShort(at: date),
+                    label: "Lunas ålder",
+                    icon: "moon.stars.fill",
+                    color: .lunaAccentLight
+                )
+            }
         }
         .padding(.vertical, 16)
         .background(Color.lunaCard)
@@ -372,6 +374,8 @@ struct ContentDetailView: View {
             Text(value)
                 .font(LunaFont.mono(14))
                 .foregroundColor(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
             Text(label)
                 .font(LunaFont.caption())
                 .foregroundColor(.lunaTextMuted)
