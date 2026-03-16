@@ -68,7 +68,7 @@ struct SearchView: View {
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.top, 58)
+            .padding(.top, 16)
             .animation(.lunaSnappy, value: vm.isEmptySearch)
 
             // Search bar
@@ -121,17 +121,11 @@ struct SearchView: View {
                                 vm.selectedGenre = nil
                             }
                         }
-                        if let type = vm.selectedType {
-                            filterChip(type.rawValue, icon: "xmark") {
-                                LunaHaptic.light()
-                                vm.selectedType = nil
-                            }
-                        }
                         Button {
                             LunaHaptic.light()
                             vm.clearFilters()
                         } label: {
-                            Text("Rensa alla")
+                            Text("Rensa")
                                 .font(LunaFont.caption())
                                 .foregroundColor(.lunaTextMuted)
                                 .padding(.horizontal, 10)
@@ -141,17 +135,6 @@ struct SearchView: View {
                     .padding(.horizontal, 16)
                 }
                 .transition(.move(edge: .top).combined(with: .opacity))
-            }
-
-            // Content type filter pills
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    typeChip(nil, label: "Alla")
-                    ForEach(vm.allTypes, id: \.rawValue) { type in
-                        typeChip(type, label: type.rawValue)
-                    }
-                }
-                .padding(.horizontal, 16)
             }
         }
         .padding(.bottom, 8)
@@ -313,31 +296,6 @@ struct SearchView: View {
         .overlay(Capsule().stroke(Color.lunaAccentLight.opacity(0.35), lineWidth: 1))
     }
 
-    private func typeChip(_ type: ContentType?, label: String) -> some View {
-        let isSelected = vm.selectedType == type
-        return Button {
-            LunaHaptic.selection()
-            withAnimation(.lunaSnappy) {
-                vm.selectedType = isSelected ? nil : type
-            }
-        } label: {
-            Text(label)
-                .font(LunaFont.caption())
-                .foregroundColor(isSelected ? .white : .lunaTextSecondary)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
-                .background(isSelected ? Color.lunaAccent : Color.lunaCard)
-                .cornerRadius(20)
-                .overlay(
-                    Capsule()
-                        .stroke(
-                            isSelected ? Color.clear : Color.white.opacity(0.07),
-                            lineWidth: 1
-                        )
-                )
-        }
-        .buttonStyle(LunaPressStyle(scale: 0.95))
-    }
 }
 
 // MARK: - Genre Card

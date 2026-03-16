@@ -107,7 +107,7 @@ struct ProfileView: View {
                         .foregroundColor(.white)
 
                 }
-                .padding(.top, 56)
+                .padding(.top, 44)
 
                 VStack(spacing: 5) {
                     Text(vm.user.name)

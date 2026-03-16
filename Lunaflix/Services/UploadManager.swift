@@ -5,7 +5,8 @@ import SwiftUI
 // MARK: - Upload Job Phase
 
 enum UploadJobPhase: Equatable {
-    case loading
+    case loading        // Extracting video from Photos library
+    case review         // File ready — user edits title/date before uploading
     case uploading
     case processing
     case done(MuxAsset)
@@ -14,6 +15,7 @@ enum UploadJobPhase: Equatable {
     var label: String {
         switch self {
         case .loading:          return "Hämtar video..."
+        case .review:           return "Klart att ladda upp"
         case .uploading:        return "Laddar upp"
         case .processing:       return "Bearbetar på Mux..."
         case .done:             return "Klar"
@@ -40,12 +42,23 @@ final class UploadJob: Identifiable, ObservableObject {
     @Published var progress: Double = 0
     @Published var speedBytesPerSec: Double = 0
     @Published var recordingDate: Date? = nil
+    @Published var customTitle: String = ""
+
+    /// Temporary local file URL after extraction from Photos
+    var fileURL: URL? = nil
+
+    /// Auto-generated title suggestion based on recording date
+    var suggestedTitle: String = ""
 
     init(index: Int) {
         self.displayIndex = index
     }
 
-    var displayName: String { "Video \(displayIndex)" }
+    /// Returns customTitle if non-empty, else suggestedTitle
+    var effectiveTitle: String {
+        let t = customTitle.trimmingCharacters(in: .whitespaces)
+        return t.isEmpty ? suggestedTitle : t
+    }
 
     var speedString: String {
         guard speedBytesPerSec > 50_000 else { return "" }
@@ -67,13 +80,32 @@ final class UploadManager: ObservableObject {
 
     var hasJobs: Bool { !jobs.isEmpty }
     var activeCount: Int { jobs.filter { $0.phase.isActive }.count }
+    var reviewCount: Int {
+        jobs.filter { if case .review = $0.phase { return true }; return false }.count
+    }
 
+    /// Add photos picker items to the queue (starts extraction immediately)
     func enqueue(items: [PhotosPickerItem]) {
         let startIndex = jobs.count + 1
         for (i, item) in items.enumerated() {
             let job = UploadJob(index: startIndex + i)
             jobs.append(job)
-            Task { await run(job: job, pickerItem: item) }
+            Task { await load(job: job, pickerItem: item) }
+        }
+    }
+
+    /// Start uploading a specific job that is in .review phase
+    func beginUpload(_ job: UploadJob) {
+        guard case .review = job.phase, let url = job.fileURL else { return }
+        Task { await continueUpload(job: job, fileURL: url) }
+    }
+
+    /// Start uploading all jobs currently in .review phase
+    func beginAllReview() {
+        for job in jobs {
+            if case .review = job.phase {
+                beginUpload(job)
+            }
         }
     }
 
@@ -92,22 +124,44 @@ final class UploadManager: ObservableObject {
         }
     }
 
-    // MARK: - Private
+    // MARK: - Phase 1: Extract file and metadata from Photos
 
-    private func run(job: UploadJob, pickerItem: PhotosPickerItem) async {
+    private func load(job: UploadJob, pickerItem: PhotosPickerItem) async {
         do {
-            // 1. Load file from photo library
             guard let movie = try await pickerItem.loadTransferable(type: VideoTransferItem.self) else {
                 throw NSError(domain: "UploadManager", code: 1,
                               userInfo: [NSLocalizedDescriptionKey: "Kunde inte läsa videofilen."])
             }
 
-            // 2. Extract recording date from video metadata
+            job.fileURL = movie.url
             job.recordingDate = await VideoMetadata.extractCreationDate(from: movie.url)
 
-            // 3. Create Mux direct upload with recording date in passthrough
+            // Generate a suggested title from recording date
+            if let date = job.recordingDate {
+                let df = DateFormatter()
+                df.locale = Locale(identifier: "sv_SE")
+                df.dateStyle = .medium
+                df.timeStyle = .none
+                job.suggestedTitle = "Luna \(df.string(from: date))"
+            } else {
+                job.suggestedTitle = "Video \(job.displayIndex)"
+            }
+
+            // Pause here — user reviews title/date before uploading
+            job.phase = .review
+
+        } catch {
+            job.phase = .failed(error.localizedDescription)
+        }
+    }
+
+    // MARK: - Phase 2: Upload to Mux
+
+    private func continueUpload(job: UploadJob, fileURL: URL) async {
+        do {
+            // Create Mux direct upload with title + recording date in passthrough
             let upload = try await MuxService.shared.createDirectUpload(
-                title: nil,
+                title: job.effectiveTitle.isEmpty ? nil : job.effectiveTitle,
                 recordingDate: job.recordingDate
             )
 
@@ -115,16 +169,16 @@ final class UploadManager: ObservableObject {
                 throw MuxError.invalidResponse
             }
 
-            // 4. Upload binary data with progress + speed reporting
+            // Upload binary data with progress + speed reporting
             job.phase = .uploading
-            try await MuxService.shared.uploadVideo(fileURL: movie.url, to: putURL) { [weak job] progress, speed in
+            try await MuxService.shared.uploadVideo(fileURL: fileURL, to: putURL) { [weak job] progress, speed in
                 Task { @MainActor [weak job] in
                     job?.progress = progress
                     job?.speedBytesPerSec = speed
                 }
             }
 
-            // 5. Poll for Mux asset to become ready
+            // Poll for Mux asset to become ready
             job.phase = .processing
             job.progress = 1.0
             job.speedBytesPerSec = 0

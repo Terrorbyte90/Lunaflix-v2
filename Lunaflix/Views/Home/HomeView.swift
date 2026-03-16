@@ -12,50 +12,59 @@ struct HomeView: View {
         ZStack(alignment: .top) {
             Color.lunaBackground.ignoresSafeArea()
 
-            ScrollView(.vertical, showsIndicators: false) {
-                LazyVStack(spacing: 0) {
-                    // Hero Carousel
-                    if !vm.heroContents.isEmpty {
-                        HeroCarouselView(
-                            contents: vm.heroContents,
-                            currentIndex: $vm.currentHeroIndex,
-                            onSelect: { vm.selectHero($0) },
-                            onTap: { selectedContent = $0 }
-                        )
-                        .frame(height: UIScreen.main.bounds.height * 0.40)
-                    } else {
-                        heroSkeleton
-                    }
-
-                    // Content categories
-                    VStack(spacing: 0) {
-                        if vm.isLoading {
-                            skeletonRows
+            if !vm.isConfigured && !vm.isLoading {
+                notConfiguredState
+            } else {
+                ScrollView(.vertical, showsIndicators: false) {
+                    LazyVStack(spacing: 0) {
+                        // Hero Carousel
+                        if !vm.heroContents.isEmpty {
+                            HeroCarouselView(
+                                contents: vm.heroContents,
+                                currentIndex: $vm.currentHeroIndex,
+                                onSelect: { vm.selectHero($0) },
+                                onTap: { selectedContent = $0 }
+                            )
+                            .frame(height: UIScreen.main.bounds.height * 0.40)
+                        } else if vm.isLoading {
+                            heroSkeleton
                         } else {
-                            ForEach(vm.categories) { category in
-                                ContentRowView(
-                                    category: category,
-                                    onTap: { selectedContent = $0 }
-                                )
-                                .padding(.bottom, 8)
+                            emptyLibraryState
+                        }
+
+                        // Content categories
+                        VStack(spacing: 0) {
+                            if vm.isLoading {
+                                skeletonRows
+                            } else {
+                                ForEach(vm.categories) { category in
+                                    ContentRowView(
+                                        category: category,
+                                        onTap: { selectedContent = $0 }
+                                    )
+                                    .padding(.bottom, 8)
+                                }
                             }
                         }
+                        .padding(.top, 8)
+                        .padding(.bottom, 120)
                     }
-                    .padding(.top, 8)
-                    .padding(.bottom, 120)
+                    .background(
+                        GeometryReader { geo in
+                            Color.clear.preference(
+                                key: ScrollOffsetKey.self,
+                                value: -geo.frame(in: .named("homeScroll")).minY
+                            )
+                        }
+                    )
                 }
-                .background(
-                    GeometryReader { geo in
-                        Color.clear.preference(
-                            key: ScrollOffsetKey.self,
-                            value: -geo.frame(in: .named("homeScroll")).minY
-                        )
-                    }
-                )
-            }
-            .coordinateSpace(name: "homeScroll")
-            .onPreferenceChange(ScrollOffsetKey.self) { value in
-                scrollOffset = value
+                .coordinateSpace(name: "homeScroll")
+                .onPreferenceChange(ScrollOffsetKey.self) { value in
+                    scrollOffset = value
+                }
+                .refreshable {
+                    vm.refresh()
+                }
             }
 
             // Navigation bar — always present, background fades in on scroll
@@ -151,6 +160,81 @@ struct HomeView: View {
             .animation(.lunaSmooth, value: showNavBackground)
         )
         .ignoresSafeArea(edges: .top)
+    }
+
+    // MARK: - Not Configured State
+
+    private var notConfiguredState: some View {
+        VStack(spacing: 28) {
+            Spacer()
+
+            ZStack {
+                Circle()
+                    .fill(Color.lunaAccent.opacity(0.12))
+                    .frame(width: 110, height: 110)
+                    .blur(radius: 20)
+                Circle()
+                    .fill(Color.lunaCard)
+                    .frame(width: 90, height: 90)
+                Image(systemName: "moon.stars.fill")
+                    .font(.system(size: 40))
+                    .foregroundStyle(LinearGradient.lunaAccentGradient)
+            }
+            .lunaGlow(color: .lunaAccent, radius: 18)
+
+            VStack(spacing: 10) {
+                Text("Lunaflix")
+                    .font(.system(size: 30, weight: .black, design: .rounded))
+                    .foregroundStyle(LinearGradient.lunaAccentGradient)
+                Text("Anslut ditt Mux-konto för att\nse och ladda upp Lunas klipp")
+                    .font(LunaFont.body())
+                    .foregroundColor(.lunaTextSecondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+            }
+
+            Button {
+                LunaHaptic.medium()
+                withAnimation(.lunaSnappy) {
+                    appState.selectedTab = .profile
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "gear")
+                    Text("Gå till inställningar")
+                        .fontWeight(.semibold)
+                }
+                .accentButton()
+            }
+            .buttonStyle(LunaPressStyle(scale: 0.97))
+
+            Spacer()
+        }
+        .padding(.horizontal, 32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Empty Library State (configured but no content)
+
+    private var emptyLibraryState: some View {
+        VStack(spacing: 20) {
+            Spacer().frame(height: 60)
+            Image(systemName: "film.stack")
+                .font(.system(size: 52))
+                .foregroundStyle(LinearGradient.lunaAccentGradient)
+                .opacity(0.55)
+            VStack(spacing: 8) {
+                Text("Inga klipp ännu")
+                    .font(LunaFont.title2())
+                    .foregroundColor(.lunaTextPrimary)
+                Text("Tryck på uppladdningsknappen\nför att lägga till Lunas första klipp")
+                    .font(LunaFont.body())
+                    .foregroundColor(.lunaTextMuted)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(3)
+            }
+        }
+        .frame(height: UIScreen.main.bounds.height * 0.40)
     }
 
     // MARK: - Skeleton Views
