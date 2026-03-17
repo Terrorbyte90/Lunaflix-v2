@@ -97,7 +97,6 @@ actor MuxService {
     // MARK: - Upload Video
 
     func uploadVideo(fileURL: URL, to uploadURL: URL, progressHandler: @escaping (Double, Double) -> Void) async throws {
-        let data = try Data(contentsOf: fileURL)
         var req = URLRequest(url: uploadURL)
         req.httpMethod = "PUT"
         req.setValue("video/*", forHTTPHeaderField: "Content-Type")
@@ -106,7 +105,8 @@ actor MuxService {
         let uploadSession = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
         defer { uploadSession.invalidateAndCancel() }
 
-        let (_, response) = try await uploadSession.upload(for: req, from: data)
+        // Stream directly from file — avoids loading the entire video into RAM
+        let (_, response) = try await uploadSession.upload(for: req, fromFile: fileURL)
         guard let http = response as? HTTPURLResponse,
               (200..<300).contains(http.statusCode) else {
             throw MuxError.uploadFailed

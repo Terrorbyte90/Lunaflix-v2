@@ -36,7 +36,11 @@ final class OrientationManager: ObservableObject {
     @Published var allowLandscape = false {
         didSet {
             // Notify UIKit that supported orientations changed
-            UIViewController.attemptRotationToDeviceOrientation()
+            guard let windowScene = UIApplication.shared.connectedScenes
+                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene
+            else { return }
+            windowScene.requestGeometryUpdate(.iOS(interfaceOrientations: allowLandscape ? .allButUpsideDown : .portrait)) { _ in }
+            windowScene.keyWindow?.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
         }
     }
 

@@ -33,6 +33,7 @@ struct ProfileView: View {
                         .padding(.bottom, 120)
                 }
             }
+            .ignoresSafeArea(edges: .top)
         }
         .sheet(item: $selectedContent) { content in
             ContentDetailView(content: content)

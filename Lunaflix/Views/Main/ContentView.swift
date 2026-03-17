@@ -4,7 +4,6 @@ struct ContentView: View {
     @EnvironmentObject var appState: AppState
     @State private var selectedContent: LunaContent? = nil
     @State private var showSplash = true
-    @State private var showUpload = false
 
     var body: some View {
         ZStack {
@@ -28,9 +27,6 @@ struct ContentView: View {
             }
         }
         .animation(.easeInOut(duration: 0.4), value: showSplash)
-        .sheet(isPresented: $showUpload) {
-            UploadView()
-        }
     }
 
     // MARK: - Main Content (tabs)
@@ -65,33 +61,6 @@ struct ContentView: View {
                 }
             }
             .animation(.lunaSmooth, value: appState.selectedTab)
-
-            // Upload FAB (only when Mux is configured)
-            if KeychainService.hasMuxCredentials {
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        Button {
-                            LunaHaptic.medium()
-                            showUpload = true
-                        } label: {
-                            ZStack {
-                                Circle()
-                                    .fill(LinearGradient.lunaAccentGradient)
-                                    .frame(width: 52, height: 52)
-                                    .shadow(color: Color.lunaAccent.opacity(0.45), radius: 12, x: 0, y: 4)
-                                Image(systemName: "arrow.up.circle.fill")
-                                    .font(.system(size: 22, weight: .semibold))
-                                    .foregroundColor(.white)
-                            }
-                        }
-                        .buttonStyle(LunaPressStyle(scale: 0.93))
-                        .padding(.trailing, 20)
-                        .padding(.bottom, 100)
-                    }
-                }
-            }
 
             // Custom tab bar
             VStack(spacing: 0) {

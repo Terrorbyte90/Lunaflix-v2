@@ -38,7 +38,7 @@ struct DownloadsView: View {
                     Spacer()
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 58)
+                .padding(.top, 16)
                 .padding(.bottom, 12)
 
                 if dm.downloads.isEmpty {

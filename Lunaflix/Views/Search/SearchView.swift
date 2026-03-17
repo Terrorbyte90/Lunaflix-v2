@@ -68,7 +68,7 @@ struct SearchView: View {
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.top, 58)
+            .padding(.top, 16)
             .animation(.lunaSnappy, value: vm.isEmptySearch)
 
             // Search bar

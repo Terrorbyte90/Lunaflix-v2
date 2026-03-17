@@ -39,6 +39,14 @@ final class SearchViewModel: ObservableObject {
     }
 
     private func loadContent() async {
+        // Use ContentStore if HomeViewModel already fetched content — avoids duplicate API call
+        let cached = ContentStore.shared.allContent
+        if !cached.isEmpty {
+            allContent = cached
+            if !query.isEmpty || hasActiveFilter { performSearch() }
+            return
+        }
+
         guard KeychainService.hasMuxCredentials else { return }
         do {
             let assets = try await MuxService.shared.listAssets()
@@ -46,7 +54,6 @@ final class SearchViewModel: ObservableObject {
                 .filter { $0.isReady }
                 .sorted { ($0.createdAt ?? 0) > ($1.createdAt ?? 0) }
                 .map { LunaContent.fromMuxAsset($0) }
-            // Re-run any active search with the loaded content
             if !query.isEmpty || hasActiveFilter { performSearch() }
         } catch {}
     }

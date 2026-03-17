@@ -35,6 +35,9 @@ final class PlayerViewModel: ObservableObject {
 
     // MARK: Private
     private var timeControlObservation: NSKeyValueObservation?
+    private var currentItemObserver: NSKeyValueObservation?
+    private var itemStatusObserver: NSKeyValueObservation?
+    private var interruptionObserver: Any?
     private var timeObserver: Any?
     private var itemEndObserver: Any?
     private var demoTask: Task<Void, Never>?
@@ -131,29 +134,31 @@ final class PlayerViewModel: ObservableObject {
         // Periodic time → progress + buffered range + Up Next
         let interval = CMTime(seconds: 0.25, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
         timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
-            guard let self else { return }
-            guard let item = self.player.currentItem else { return }
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                guard let item = self.player.currentItem else { return }
 
-            let d = item.duration.seconds
-            guard d.isFinite, d > 0 else { return }
+                let d = item.duration.seconds
+                guard d.isFinite, d > 0 else { return }
 
-            self.duration = d
-            if !self.isScrubbing {
-                self.progress = time.seconds / d
-            }
+                self.duration = d
+                if !self.isScrubbing {
+                    self.progress = time.seconds / d
+                }
 
-            // Real buffered range from AVPlayerItem
-            if let range = item.loadedTimeRanges.first?.timeRangeValue {
-                let end = (range.start + range.duration).seconds
-                self.bufferedProgress = min(1, end / d)
-            }
+                // Real buffered range from AVPlayerItem
+                if let range = item.loadedTimeRanges.first?.timeRangeValue {
+                    let end = (range.start + range.duration).seconds
+                    self.bufferedProgress = min(1, end / d)
+                }
 
-            // "Up Next" banner: show 15s before end when a next item exists
-            let remaining = d - time.seconds
-            if remaining < 15, remaining > 0, self.nextContent != nil {
-                if !self.showUpNext { self.showUpNext = true }
-            } else if remaining >= 15 {
-                if self.showUpNext { self.showUpNext = false }
+                // "Up Next" banner: show 15s before end when a next item exists
+                let remaining = d - time.seconds
+                if remaining < 15, remaining > 0, self.nextContent != nil {
+                    if !self.showUpNext { self.showUpNext = true }
+                } else if remaining >= 15 {
+                    if self.showUpNext { self.showUpNext = false }
+                }
             }
         }
 
@@ -165,6 +170,58 @@ final class PlayerViewModel: ObservableObject {
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.handleItemEnded()
+            }
+        }
+
+        // Observe currentItem changes to track per-item errors and clear stale state
+        currentItemObserver = player.observe(\.currentItem, options: [.new, .initial]) { [weak self] p, _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.error = nil
+                self.setupItemStatusObserver(for: p.currentItem)
+            }
+        }
+
+        // Handle audio interruptions (phone calls, Siri, alarms, etc.)
+        interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main
+        ) { [weak self] notif in
+            guard let typeValue = notif.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                switch type {
+                case .began:
+                    self.player.pause()
+                case .ended:
+                    if let optValue = notif.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt,
+                       AVAudioSession.InterruptionOptions(rawValue: optValue).contains(.shouldResume) {
+                        self.player.play()
+                    }
+                @unknown default: break
+                }
+            }
+        }
+    }
+
+    private func setupItemStatusObserver(for item: AVPlayerItem?) {
+        itemStatusObserver?.invalidate()
+        itemStatusObserver = nil
+        guard let item else { return }
+        itemStatusObserver = item.observe(\.status, options: [.new, .initial]) { [weak self] itm, _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                switch itm.status {
+                case .failed:
+                    self.error = itm.error?.localizedDescription ?? "Uppspelningen misslyckades"
+                    self.isBuffering = false
+                case .readyToPlay:
+                    if self.error != nil { self.error = nil }
+                default:
+                    break
+                }
             }
         }
     }
@@ -230,6 +287,12 @@ final class PlayerViewModel: ObservableObject {
         handleItemEnded()   // sync index + pre-queue n+2
     }
 
+    func retryPlayback() {
+        error = nil
+        buildQueue(from: currentIndex)
+        player.play()
+    }
+
     func toggleMute() {
         isMuted.toggle()
         player.isMuted = isMuted
@@ -266,8 +329,16 @@ final class PlayerViewModel: ObservableObject {
             NotificationCenter.default.removeObserver(obs)
             itemEndObserver = nil
         }
+        if let obs = interruptionObserver {
+            NotificationCenter.default.removeObserver(obs)
+            interruptionObserver = nil
+        }
         timeControlObservation?.invalidate()
         timeControlObservation = nil
+        currentItemObserver?.invalidate()
+        currentItemObserver = nil
+        itemStatusObserver?.invalidate()
+        itemStatusObserver = nil
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 }
@@ -337,6 +408,11 @@ struct PlayerView: View {
                     .allowsHitTesting(false)
             }
 
+            // Error overlay
+            if let errorMsg = vm.error {
+                errorOverlay(errorMsg)
+            }
+
             // "Up Next" banner
             if vm.showUpNext, let next = vm.nextContent {
                 VStack {
@@ -371,6 +447,55 @@ struct PlayerView: View {
         }
         .sheet(isPresented: $showSettings) {
             PlayerSettingsSheet()
+        }
+    }
+
+    // MARK: - Error Overlay
+
+    @ViewBuilder
+    private func errorOverlay(_ message: String) -> some View {
+        Color.black.opacity(0.75)
+            .ignoresSafeArea()
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 44))
+                .foregroundColor(.lunaAccentLight)
+            Text("Uppspelningsfel")
+                .font(LunaFont.body())
+                .fontWeight(.bold)
+                .foregroundColor(.white)
+            Text(message)
+                .font(LunaFont.caption())
+                .foregroundColor(.lunaTextSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+            HStack(spacing: 16) {
+                Button {
+                    LunaHaptic.medium()
+                    vm.retryPlayback()
+                } label: {
+                    Label("Försök igen", systemImage: "arrow.clockwise")
+                        .font(LunaFont.body())
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .background(Color.lunaAccent)
+                        .cornerRadius(12)
+                }
+                .buttonStyle(LunaPressStyle())
+
+                Button { dismiss() } label: {
+                    Text("Stäng")
+                        .font(LunaFont.body())
+                        .foregroundColor(.lunaTextSecondary)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .background(Color.white.opacity(0.12))
+                        .cornerRadius(12)
+                }
+                .buttonStyle(LunaPressStyle())
+            }
         }
     }
 
@@ -492,7 +617,7 @@ struct PlayerView: View {
 
             Spacer()
 
-            HStack(spacing: 12) {
+            HStack(spacing: 4) {
                 Button {
                     LunaHaptic.light()
                     vm.toggleMute()
@@ -504,6 +629,9 @@ struct PlayerView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(LunaPressStyle())
+
+                AirPlayButton()
+                    .frame(width: 44, height: 44)
 
                 Button { showSettings = true } label: {
                     Image(systemName: "ellipsis")
@@ -754,13 +882,27 @@ struct AVPlayerRepresentable: UIViewControllerRepresentable {
         vc.videoGravity = .resizeAspect
         vc.view.backgroundColor = .black
         // Allow subtitles / captions from HLS stream
-        vc.allowsPictureInPicturePlayback = false
+        vc.allowsPictureInPicturePlayback = true
         return vc
     }
 
     func updateUIViewController(_ vc: AVPlayerViewController, context: Context) {
         if vc.player !== player { vc.player = player }
     }
+}
+
+// MARK: - AirPlay Button
+
+struct AirPlayButton: UIViewRepresentable {
+    func makeUIView(context: Context) -> AVRoutePickerView {
+        let view = AVRoutePickerView()
+        view.activeTintColor = UIColor(Color.lunaAccentLight)
+        view.tintColor = UIColor.white
+        view.backgroundColor = .clear
+        return view
+    }
+
+    func updateUIView(_ uiView: AVRoutePickerView, context: Context) {}
 }
 
 // MARK: - Seek Flash Overlay

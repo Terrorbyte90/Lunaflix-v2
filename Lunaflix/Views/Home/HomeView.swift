@@ -5,8 +5,17 @@ struct HomeView: View {
     @EnvironmentObject var appState: AppState
     @State private var selectedContent: LunaContent? = nil
     @State private var scrollOffset: CGFloat = 0
+    @State private var showUpload = false
 
-    private var showNavBackground: Bool { scrollOffset > 280 }
+    private var showNavBackground: Bool { scrollOffset > 240 }
+
+    private var safeAreaTop: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first(where: { $0.isKeyWindow })?
+            .safeAreaInsets.top ?? 44
+    }
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -54,6 +63,7 @@ struct HomeView: View {
                 )
             }
             .coordinateSpace(name: "homeScroll")
+            .ignoresSafeArea(edges: .top)
             .onPreferenceChange(ScrollOffsetKey.self) { value in
                 scrollOffset = value
             }
@@ -63,6 +73,9 @@ struct HomeView: View {
         }
         .sheet(item: $selectedContent) { content in
             ContentDetailView(content: content)
+        }
+        .sheet(isPresented: $showUpload) {
+            UploadView()
         }
     }
 
@@ -84,9 +97,10 @@ struct HomeView: View {
 
             HStack(spacing: 14) {
                 Button {
-                    // Cast action — placeholder
+                    LunaHaptic.medium()
+                    showUpload = true
                 } label: {
-                    Image(systemName: "tv.badge.wifi")
+                    Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 18, weight: .medium))
                         .foregroundColor(showNavBackground ? .lunaTextSecondary : .white.opacity(0.8))
                         .frame(width: 36, height: 36)
@@ -121,7 +135,8 @@ struct HomeView: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.top, safeAreaTop + 8)
+        .padding(.bottom, 10)
         .background(
             ZStack {
                 // Always: subtle gradient so logo is readable against hero
