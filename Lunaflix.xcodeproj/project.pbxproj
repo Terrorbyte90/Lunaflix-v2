@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		9B4AC3AB2F6B7116007CBD4D /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = 9B4AC3AA2F6B7116007CBD4D /* Kingfisher */; };
+		9B4AC3AE2F6B718E007CBD4D /* MUXSDKStats in Frameworks */ = {isa = PBXBuildFile; productRef = 9B4AC3AD2F6B718E007CBD4D /* MUXSDKStats */; };
 		AA000001 /* LunaflixApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100001 /* LunaflixApp.swift */; };
 		AA000002 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100002 /* AppTheme.swift */; };
 		AA000003 /* Content.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100003 /* Content.swift */; };
@@ -41,8 +43,24 @@
 		BB000004 /* ProfileViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB100004 /* ProfileViewModelTests.swift */; };
 		BB000005 /* ContentModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB100005 /* ContentModelTests.swift */; };
 		CC000001 /* LunaflixUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC100001 /* LunaflixUITests.swift */; };
-		BB010001 /* Lunaflix.app in Frameworks */ = {isa = PBXBuildFile; fileRef = AAPRODUCT /* Lunaflix.app */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		9B4AC3A72F6B70CE007CBD4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AAPROJECT /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AATARGET;
+			remoteInfo = Lunaflix;
+		};
+		9B4AC3A82F6B70CE007CBD4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AAPROJECT /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AATARGET;
+			remoteInfo = Lunaflix;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		AA100001 /* LunaflixApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LunaflixApp.swift; sourceTree = "<group>"; };
@@ -89,6 +107,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9B4AC3AE2F6B718E007CBD4D /* MUXSDKStats in Frameworks */,
+				9B4AC3AB2F6B7116007CBD4D /* Kingfisher in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -117,26 +137,6 @@
 				CCGRP0001 /* LunaflixUITests */,
 				AAGRP0099 /* Products */,
 			);
-			sourceTree = "<group>";
-		};
-		BBGRP0001 /* LunaflixTests */ = {
-			isa = PBXGroup;
-			children = (
-				BB100001 /* LunaAgeTests.swift */,
-				BB100002 /* MuxAssetTests.swift */,
-				BB100003 /* SearchViewModelTests.swift */,
-				BB100004 /* ProfileViewModelTests.swift */,
-				BB100005 /* ContentModelTests.swift */,
-			);
-			path = LunaflixTests;
-			sourceTree = "<group>";
-		};
-		CCGRP0001 /* LunaflixUITests */ = {
-			isa = PBXGroup;
-			children = (
-				CC100001 /* LunaflixUITests.swift */,
-			);
-			path = LunaflixUITests;
 			sourceTree = "<group>";
 		};
 		AAGRP0001 /* Lunaflix */ = {
@@ -312,6 +312,26 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		BBGRP0001 /* LunaflixTests */ = {
+			isa = PBXGroup;
+			children = (
+				BB100001 /* LunaAgeTests.swift */,
+				BB100002 /* MuxAssetTests.swift */,
+				BB100003 /* SearchViewModelTests.swift */,
+				BB100004 /* ProfileViewModelTests.swift */,
+				BB100005 /* ContentModelTests.swift */,
+			);
+			path = LunaflixTests;
+			sourceTree = "<group>";
+		};
+		CCGRP0001 /* LunaflixUITests */ = {
+			isa = PBXGroup;
+			children = (
+				CC100001 /* LunaflixUITests.swift */,
+			);
+			path = LunaflixUITests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -399,6 +419,10 @@
 				Base,
 			);
 			mainGroup = AAGRP0000;
+			packageReferences = (
+				9B4AC3A92F6B7116007CBD4D /* XCRemoteSwiftPackageReference "Kingfisher" */,
+				9B4AC3AC2F6B718E007CBD4D /* XCRemoteSwiftPackageReference "mux-stats-sdk-avplayer" */,
+			);
 			productRefGroup = AAGRP0099 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -419,17 +443,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
-
-/* Begin PBXTargetDependency section */
-		BBDEP0001 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = AATARGET /* Lunaflix */;
-		};
-		CCDEP0001 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = AATARGET /* Lunaflix */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin PBXSourcesBuildPhase section */
 		AABP0002 /* Sources */ = {
@@ -488,6 +501,19 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		BBDEP0001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AATARGET /* Lunaflix */;
+			targetProxy = 9B4AC3A72F6B70CE007CBD4D /* PBXContainerItemProxy */;
+		};
+		CCDEP0001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AATARGET /* Lunaflix */;
+			targetProxy = 9B4AC3A82F6B70CE007CBD4D /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		AAXBC0001 /* Debug */ = {
@@ -795,6 +821,38 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		9B4AC3A92F6B7116007CBD4D /* XCRemoteSwiftPackageReference "Kingfisher" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/onevcat/Kingfisher";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.8.0;
+			};
+		};
+		9B4AC3AC2F6B718E007CBD4D /* XCRemoteSwiftPackageReference "mux-stats-sdk-avplayer" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/muxinc/mux-stats-sdk-avplayer";
+			requirement = {
+				branch = master;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		9B4AC3AA2F6B7116007CBD4D /* Kingfisher */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B4AC3A92F6B7116007CBD4D /* XCRemoteSwiftPackageReference "Kingfisher" */;
+			productName = Kingfisher;
+		};
+		9B4AC3AD2F6B718E007CBD4D /* MUXSDKStats */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B4AC3AC2F6B718E007CBD4D /* XCRemoteSwiftPackageReference "mux-stats-sdk-avplayer" */;
+			productName = MUXSDKStats;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = AAPROJECT /* Project object */;
 }
