@@ -275,8 +275,10 @@ KingfisherManager.shared.cache.memoryStorage.config.totalCostLimit = 50 * 1024 *
 
 `HomeViewModel.swift` — at the end of `loadContent()`, after `ContentStore.shared.update(allContent)`:
 ```swift
-let allURLs = allContent.compactMap { $0.thumbnailURL }
-ImagePrefetcher(urls: allURLs).start()
+// Only prefetch the first 50 thumbnails (hero + first visible rows).
+// Kingfisher fetches JPEGs, not video files, but 1000 requests at startup is still excessive.
+let visibleURLs = allContent.prefix(50).compactMap { $0.thumbnailURL }
+ImagePrefetcher(urls: Array(visibleURLs)).start()
 ```
 
 ### Step 3: @Observable migration
