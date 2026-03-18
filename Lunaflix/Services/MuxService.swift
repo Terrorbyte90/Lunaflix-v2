@@ -44,6 +44,22 @@ actor MuxService {
         return req
     }
 
+    private func authorizedRequest(
+        url: URL,
+        method: String = "GET",
+        body: Data? = nil
+    ) throws -> URLRequest {
+        let tid = KeychainService.muxTokenID
+        let tsc = KeychainService.muxTokenSecret
+        guard !tid.isEmpty, !tsc.isEmpty else { throw MuxError.missingCredentials }
+        var req = URLRequest(url: url)
+        req.httpMethod = method
+        req.setValue(authHeader(tokenID: tid, tokenSecret: tsc), forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = body
+        return req
+    }
+
     // MARK: - Test Connection
 
     func testConnection(tokenID: String, tokenSecret: String) async throws {
@@ -59,13 +75,59 @@ actor MuxService {
         }
     }
 
-    // MARK: - List Assets
+    // MARK: - Retry Helper
 
-    func listAssets(limit: Int = 100) async throws -> [MuxAsset] {
-        let req = try authorizedRequest(path: "/video/v1/assets?limit=\(limit)&order_direction=desc")
+    private func withRetry<T>(
+        maxAttempts: Int = 3,
+        baseDelay: Double = 0.5,
+        _ operation: () async throws -> T
+    ) async throws -> T {
+        var attempt = 0
+        while true {
+            do {
+                return try await operation()
+            } catch let error as URLError {
+                attempt += 1
+                if attempt >= maxAttempts { throw error }
+                let delay = baseDelay * pow(2.0, Double(attempt - 1))
+                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            } catch let error as MuxError {
+                if case .serverError(let code) = error, code >= 500 {
+                    attempt += 1
+                    if attempt >= maxAttempts { throw error }
+                    let delay = baseDelay * pow(2.0, Double(attempt - 1))
+                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                } else {
+                    throw error
+                }
+            }
+        }
+    }
+
+    private func fetchAssetsPage(page: Int, limit: Int) async throws -> [MuxAsset] {
+        guard let url = URL(string: "https://api.mux.com/video/v1/assets?limit=\(limit)&page=\(page)&order_direction=desc") else {
+            throw MuxError.invalidResponse
+        }
+        let req = try authorizedRequest(url: url)
         let (data, response) = try await session.data(for: req)
         try validate(response)
         return try JSONDecoder().decode(MuxAssetListResponse.self, from: data).data
+    }
+
+    // MARK: - List Assets
+
+    func listAssets() async throws -> [MuxAsset] {
+        var all: [MuxAsset] = []
+        var page = 1
+        let limit = 100
+        let maxPages = 20
+        var batch: [MuxAsset]
+        repeat {
+            batch = try await withRetry { try await self.fetchAssetsPage(page: page, limit: limit) }
+            all.append(contentsOf: batch)
+            page += 1
+        } while batch.count == limit && page <= maxPages
+        return all
     }
 
     // MARK: - Get Asset
@@ -82,16 +144,15 @@ actor MuxService {
     func createDirectUpload(title: String?, recordingDate: Date? = nil) async throws -> MuxDirectUpload {
         let passthrough = MuxPassthroughMeta.encode(title: title, recordingDate: recordingDate)
         let body = MuxCreateUploadRequest(
-            newAssetSettings: .init(
-                playbackPolicy: ["public"],
-                passthrough: passthrough
-            )
+            newAssetSettings: .init(playbackPolicy: ["public"], passthrough: passthrough)
         )
         let bodyData = try JSONEncoder().encode(body)
-        let req = try authorizedRequest(path: "/video/v1/uploads", method: "POST", body: bodyData)
-        let (data, response) = try await session.data(for: req)
-        try validate(response)
-        return try JSONDecoder().decode(MuxUploadResponse.self, from: data).data
+        return try await withRetry {
+            let req = try self.authorizedRequest(path: "/video/v1/uploads", method: "POST", body: bodyData)
+            let (data, response) = try await self.session.data(for: req)
+            try self.validate(response)
+            return try JSONDecoder().decode(MuxUploadResponse.self, from: data).data
+        }
     }
 
     // MARK: - Upload Video

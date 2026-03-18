@@ -97,41 +97,28 @@ struct ContentDetailView: View {
     }
 
     private func saveTitle() async {
-        guard let muxID = content.muxPlaybackID else { return }
         let newTitle = editedTitle.trimmingCharacters(in: .whitespaces)
         guard !newTitle.isEmpty else { return }
+        guard let assetId = content.assetId else { return }
         isSavingTitle = true
         do {
-            let assets = try await MuxService.shared.listAssets()
-            if let asset = assets.first(where: { $0.primaryPlaybackID == muxID }) {
-                try await MuxService.shared.updateAssetPassthrough(
-                    id: asset.id,
-                    title: newTitle,
-                    recordingDate: content.recordingDate
-                )
-                LunaHaptic.success()
-            }
+            try await MuxService.shared.updateAssetPassthrough(
+                id: assetId,
+                title: newTitle,
+                recordingDate: content.recordingDate
+            )
+            LunaHaptic.success()
         } catch {}
         isSavingTitle = false
     }
 
     private func deleteVideo() async {
-        guard let muxID = content.muxPlaybackID else { return }
+        guard let assetId = content.assetId else { return }
         isDeleting = true
-        // Extract asset ID from playback ID is not possible directly — we need to
-        // search ContentStore for the matching Mux asset ID. We use the content.id
-        // which maps to the muxPlaybackID indirectly.
-        // Best approach: find the asset via the stored playbackID in ContentStore.
-        // Since MuxService works with asset IDs, we list and match.
         do {
-            let assets = try await MuxService.shared.listAssets()
-            if let asset = assets.first(where: { $0.primaryPlaybackID == muxID }) {
-                try await MuxService.shared.deleteAsset(id: asset.id)
-                LunaHaptic.success()
-            }
-        } catch {
-            // Silently fail — user can try again
-        }
+            try await MuxService.shared.deleteAsset(id: assetId)
+            LunaHaptic.success()
+        } catch {}
         isDeleting = false
         dismiss()
     }

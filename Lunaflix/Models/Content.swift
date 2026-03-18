@@ -22,6 +22,7 @@ struct LunaContent: Identifiable, Hashable {
     let numberOfSeasons: Int?
     let episodes: [Episode]
     let muxPlaybackID: String?
+    let assetId: String?          // Mux asset ID — enables direct edit/delete without re-listing
     let recordingDate: Date?
 
     /// "Luna var X gammal" — non-nil only when recording date is known
@@ -49,6 +50,7 @@ struct LunaContent: Identifiable, Hashable {
         numberOfSeasons: Int? = nil,
         episodes: [Episode] = [],
         muxPlaybackID: String? = nil,
+        assetId: String? = nil,
         recordingDate: Date? = nil
     ) {
         self.id = id
@@ -70,6 +72,7 @@ struct LunaContent: Identifiable, Hashable {
         self.numberOfSeasons = numberOfSeasons
         self.episodes = episodes
         self.muxPlaybackID = muxPlaybackID
+        self.assetId = assetId
         self.recordingDate = recordingDate
     }
 
@@ -343,6 +346,7 @@ extension LunaContent {
             heroGradient: style,
             isNew: isNew,
             muxPlaybackID: asset.primaryPlaybackID,
+            assetId: asset.id,
             recordingDate: recordingDate
         )
     }
