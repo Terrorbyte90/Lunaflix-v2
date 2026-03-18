@@ -184,14 +184,20 @@ struct SearchView: View {
         }
     }
 
-    // MARK: - Trending
+    // MARK: - Trending (Senaste minnen)
 
     private var trendingSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 6) {
-                Image(systemName: "clock.fill")
-                    .foregroundStyle(LinearGradient.lunaAccentGradient)
-                Text("Senaste videor")
+                ZStack {
+                    Circle()
+                        .fill(Color.lunaWarm.opacity(0.15))
+                        .frame(width: 26, height: 26)
+                    Image(systemName: "moon.stars.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.lunaWarm)
+                }
+                Text("Senaste minnen")
                     .font(LunaFont.title3())
                     .foregroundColor(.lunaTextPrimary)
             }
@@ -259,14 +265,24 @@ struct SearchView: View {
             Spacer().frame(height: 50)
 
             ZStack {
+                // Pulsing outer ring for visual interest
+                Circle()
+                    .fill(Color.lunaAccent.opacity(0.08))
+                    .frame(width: 110, height: 110)
                 Circle()
                     .fill(Color.lunaCard)
                     .frame(width: 90, height: 90)
                 Image(systemName: "moon.zzz.fill")
                     .font(.system(size: 40))
-                    .foregroundStyle(LinearGradient.lunaAccentGradient)
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color.lunaWarm, Color.lunaAccentLight],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
             }
-            .lunaGlow(color: .lunaAccent, radius: 15)
+            .lunaGlow(color: .lunaAccent, radius: 18)
 
             VStack(spacing: 8) {
                 Text("Inga resultat")

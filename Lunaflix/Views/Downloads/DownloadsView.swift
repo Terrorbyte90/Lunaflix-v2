@@ -121,13 +121,16 @@ struct DownloadsView: View {
 
             ZStack {
                 Circle()
+                    .fill(Color.lunaAccent.opacity(0.08))
+                    .frame(width: 120, height: 120)
+                Circle()
                     .fill(Color.lunaCard)
                     .frame(width: 100, height: 100)
                 Image(systemName: "arrow.down.circle.fill")
                     .font(.system(size: 44))
                     .foregroundStyle(LinearGradient.lunaAccentGradient)
             }
-            .lunaGlow(color: .lunaAccent, radius: 15)
+            .lunaGlow(color: .lunaAccent, radius: 18)
 
             VStack(spacing: 8) {
                 Text("Inga nedladdningar")
@@ -156,23 +159,33 @@ struct DownloadRow: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            // Thumbnail
+            // Thumbnail with real Mux image
             Button(action: onTap) {
                 ZStack {
-                    Rectangle()
-                        .fill(item.thumbnailGradient.gradient)
-                        .frame(width: 88, height: 64)
-                        .cornerRadius(10)
+                    MuxThumbnailImage(
+                        playbackID: item.muxPlaybackID,
+                        fallbackGradient: item.thumbnailGradient,
+                        width: 88,
+                        height: 64
+                    )
+                    .cornerRadius(10)
 
+                    // State overlay
                     if item.isReady {
+                        Color.black.opacity(0.25)
+                            .cornerRadius(10)
                         Image(systemName: "play.fill")
                             .font(.system(size: 18, weight: .bold))
-                            .foregroundColor(.white.opacity(0.85))
+                            .foregroundColor(.white.opacity(0.90))
                     } else if item.errorMessage != nil {
+                        Color.black.opacity(0.45)
+                            .cornerRadius(10)
                         Image(systemName: "exclamationmark.circle.fill")
                             .font(.system(size: 20))
-                            .foregroundColor(.red.opacity(0.8))
+                            .foregroundColor(.red.opacity(0.85))
                     } else {
+                        Color.black.opacity(0.35)
+                            .cornerRadius(10)
                         // Progress ring
                         ZStack {
                             Circle()
@@ -183,9 +196,11 @@ struct DownloadRow: View {
                                 .stroke(Color.white, style: StrokeStyle(lineWidth: 3, lineCap: .round))
                                 .frame(width: 32, height: 32)
                                 .rotationEffect(.degrees(-90))
+                                .animation(.linear(duration: 0.3), value: item.progress)
                         }
                     }
                 }
+                .frame(width: 88, height: 64)
             }
             .buttonStyle(LunaPressStyle(scale: 0.93))
 

@@ -53,42 +53,68 @@ final class HomeViewModel: ObservableObject {
         }
     }
 
+    // Called after an upload completes so the new asset appears immediately
+    func refreshAfterUpload() {
+        // Short delay lets Mux finish the final processing step
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            load()
+        }
+    }
+
     private func buildCategories(from contents: [LunaContent]) -> [ContentCategory] {
         guard !contents.isEmpty else { return [] }
 
         let calendar = Calendar.current
-        let cutoff = calendar.date(byAdding: .day, value: -60, to: Date()) ?? Date()
-        let recent = contents.filter { $0.recordingDate.map { $0 > cutoff } ?? false }
-        let older  = contents.filter { $0.recordingDate.map { $0 <= cutoff } ?? true }
+        let cutoff30 = calendar.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+
+        // "Senaste 30 dagarna" row first
+        let recent = contents.filter { $0.recordingDate.map { $0 > cutoff30 } ?? false }
+
+        // Group all content by year for yearly browsing
+        var byYear: [Int: [LunaContent]] = [:]
+        for item in contents {
+            let year = item.recordingDate.map { calendar.component(.year, from: $0) } ?? item.year
+            byYear[year, default: []].append(item)
+        }
 
         var cats: [ContentCategory] = []
 
+        // Recent first
         if !recent.isEmpty {
             cats.append(ContentCategory(
-                title: "Senaste klippen",
+                title: "Senaste 30 dagarna",
                 subtitle: "\(recent.count) videor",
                 contents: recent,
                 style: .wideCard
             ))
         }
-        if !older.isEmpty {
+
+        // Then yearly rows newest first
+        let sortedYears = byYear.keys.sorted(by: >)
+        for year in sortedYears {
+            guard let rawContents = byYear[year] else { continue }
+            let yearContents = rawContents.sorted { ($0.recordingDate ?? Date.distantPast) > ($1.recordingDate ?? Date.distantPast) }
+            let lunaAge = lunaAgeForYear(year)
+            let subtitle = lunaAge.map { "\($0) • \(yearContents.count) videor" } ?? "\(yearContents.count) videor"
             cats.append(ContentCategory(
-                title: older.isEmpty ? "Mitt bibliotek" : "Äldre klipp",
-                subtitle: "\(older.count) videor",
-                contents: older,
-                style: .wideCard
-            ))
-        }
-        if cats.isEmpty {
-            cats.append(ContentCategory(
-                title: "Mitt bibliotek",
-                subtitle: "\(contents.count) videor",
-                contents: contents,
+                title: "\(year)",
+                subtitle: subtitle,
+                contents: yearContents,
                 style: .wideCard
             ))
         }
 
         return cats
+    }
+
+    private func lunaAgeForYear(_ year: Int) -> String? {
+        // Show what age Luna was approximately mid-year
+        var comps = DateComponents()
+        comps.year = year; comps.month = 7; comps.day = 1
+        guard let midYear = Calendar.current.date(from: comps) else { return nil }
+        guard midYear > LunaAge.birthday else { return nil }
+        return LunaAge.ageShort(at: midYear)
     }
 
     private func startHeroTimer() {

@@ -3,6 +3,8 @@ import SwiftUI
 struct LunaTabBar: View {
     @Binding var selectedTab: Tab
     @Namespace private var namespace
+    @ObservedObject private var um = UploadManager.shared
+    @ObservedObject private var dm = DownloadManager.shared
 
     var body: some View {
         HStack(spacing: 0) {
@@ -18,22 +20,42 @@ struct LunaTabBar: View {
                 Rectangle()
                     .fill(.ultraThinMaterial)
                 Rectangle()
-                    .fill(Color.lunaBackground.opacity(0.75))
+                    .fill(Color.lunaBackground.opacity(0.80))
             }
             .ignoresSafeArea()
         )
+        // Top separator: a hairline with a subtle centre-glow
         .overlay(
-            Rectangle()
-                .fill(
-                    LinearGradient(
-                        colors: [Color.lunaAccent.opacity(0.15), Color.clear],
-                        startPoint: .leading,
-                        endPoint: .trailing
+            ZStack {
+                Rectangle()
+                    .fill(Color.white.opacity(0.07))
+                    .frame(height: 1)
+                // Centre glow
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.clear, Color.lunaAccent.opacity(0.35), Color.clear],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
                     )
-                )
-                .frame(height: 1),
+                    .frame(height: 1)
+            },
             alignment: .top
         )
+    }
+
+    private func badgeCount(for tab: Tab) -> Int {
+        switch tab {
+        case .home:
+            // Show active upload count on home tab so user knows something is processing
+            return um.activeCount
+        case .downloads:
+            // Active downloads badge
+            return dm.downloads.filter { !$0.isReady && $0.errorMessage == nil }.count
+        default:
+            return 0
+        }
     }
 
     private func tabItem(_ tab: Tab) -> some View {
@@ -47,10 +69,24 @@ struct LunaTabBar: View {
         } label: {
             VStack(spacing: 5) {
                 ZStack {
+                    // Animated pill background
                     if selectedTab == tab {
                         RoundedRectangle(cornerRadius: 10)
-                            .fill(Color.lunaAccent.opacity(0.18))
-                            .frame(width: 48, height: 32)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.lunaAccent.opacity(0.28),
+                                        Color.lunaAccentLight.opacity(0.12)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 52, height: 34)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(Color.lunaAccentLight.opacity(0.20), lineWidth: 1)
+                            )
                             .matchedGeometryEffect(id: "tab_bg", in: namespace)
                     }
 
@@ -61,7 +97,23 @@ struct LunaTabBar: View {
                             ? AnyShapeStyle(LinearGradient.lunaAccentGradient)
                             : AnyShapeStyle(Color.lunaTextMuted)
                         )
-                        .frame(width: 48, height: 32)
+                        .frame(width: 52, height: 34)
+                        .overlay(alignment: .topTrailing) {
+                            let count = badgeCount(for: tab)
+                            if count > 0 {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.lunaAccent)
+                                        .frame(width: 16, height: 16)
+                                    Text("\(count)")
+                                        .font(.system(size: 9, weight: .black, design: .rounded))
+                                        .foregroundColor(.white)
+                                }
+                                .offset(x: 4, y: -4)
+                                .transition(.scale.combined(with: .opacity))
+                                .animation(.lunaSpring, value: count)
+                            }
+                        }
                 }
 
                 Text(tab.title)

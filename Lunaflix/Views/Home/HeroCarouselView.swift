@@ -6,6 +6,8 @@ struct HeroCarouselView: View {
     let onSelect: (Int) -> Void
     let onTap: (LunaContent) -> Void
 
+    @State private var watchlistIDs: Set<UUID> = []
+
     var body: some View {
         ZStack(alignment: .bottom) {
             // Hero pages
@@ -16,7 +18,7 @@ struct HeroCarouselView: View {
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
-            .onChange(of: currentIndex) { newVal in
+            .onChange(of: currentIndex) { _, newVal in
                 LunaHaptic.light()
                 onSelect(newVal)
             }
@@ -34,9 +36,29 @@ struct HeroCarouselView: View {
 
     @ViewBuilder
     private func heroInfoOverlay(_ content: LunaContent) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // Genre chips (only shown if content has genres)
-            if !content.genre.isEmpty {
+        VStack(alignment: .leading, spacing: 0) {
+            Spacer()
+
+            // Luna age badge — the emotional centrepiece of this family app
+            if let age = content.lunaAgeAtRecording {
+                HStack(spacing: 5) {
+                    Image(systemName: "moon.stars.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.lunaWarm)
+                    Text(age)
+                        .font(LunaFont.tag())
+                        .foregroundColor(.lunaWarm)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(.ultraThinMaterial.opacity(0.8))
+                .background(Color.lunaWarm.opacity(0.08))
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(Color.lunaWarm.opacity(0.25), lineWidth: 1))
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
+            } else if !content.genre.isEmpty {
+                // Genre chips (only shown if content has genres)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
                         ForEach(content.genre, id: \.rawValue) { genre in
@@ -55,14 +77,16 @@ struct HeroCarouselView: View {
                     }
                     .padding(.horizontal, 16)
                 }
+                .padding(.bottom, 8)
             }
 
             // Title
             Text(content.title)
                 .font(LunaFont.hero())
                 .foregroundColor(.white)
-                .shadow(color: .black.opacity(0.6), radius: 10, x: 0, y: 2)
+                .shadow(color: .black.opacity(0.7), radius: 12, x: 0, y: 3)
                 .padding(.horizontal, 16)
+                .padding(.bottom, 8)
 
             // Meta info row
             HStack(spacing: 8) {
@@ -91,6 +115,7 @@ struct HeroCarouselView: View {
                     .foregroundColor(.lunaTextSecondary)
             }
             .padding(.horizontal, 16)
+            .padding(.bottom, 14)
 
             // Action buttons
             HStack(spacing: 10) {
@@ -121,33 +146,45 @@ struct HeroCarouselView: View {
 
                 Spacer()
 
-                // Watchlist
+                // Watchlist toggle
                 Button {
                     LunaHaptic.light()
+                    withAnimation(.lunaSpring) {
+                        if watchlistIDs.contains(content.id) {
+                            watchlistIDs.remove(content.id)
+                        } else {
+                            watchlistIDs.insert(content.id)
+                        }
+                    }
                 } label: {
-                    Image(systemName: "plus")
+                    let inList = watchlistIDs.contains(content.id)
+                    Image(systemName: inList ? "checkmark" : "plus")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(inList ? .lunaAccentLight : .white)
                         .frame(width: 44, height: 44)
                         .background(.ultraThinMaterial)
                         .clipShape(Circle())
-                        .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 1))
+                        .overlay(Circle().stroke(
+                            inList ? Color.lunaAccentLight.opacity(0.4) : Color.white.opacity(0.15),
+                            lineWidth: 1
+                        ))
                 }
                 .buttonStyle(LunaPressStyle())
             }
             .padding(.horizontal, 16)
+            .padding(.bottom, 14)
 
             // Page dots
             HStack(spacing: 5) {
                 ForEach(0..<contents.count, id: \.self) { i in
                     Capsule()
                         .fill(i == currentIndex ? Color.white : Color.white.opacity(0.25))
-                        .frame(width: i == currentIndex ? 18 : 5, height: 5)
+                        .frame(width: i == currentIndex ? 20 : 5, height: 5)
                 }
                 Spacer()
             }
             .padding(.horizontal, 16)
-            .padding(.bottom, 14)
+            .padding(.bottom, 16)
             .animation(.lunaSnappy, value: currentIndex)
         }
     }
@@ -167,81 +204,92 @@ struct HeroCard: View {
     let content: LunaContent
     let onTap: () -> Void
 
+    private var thumbnailURL: URL? {
+        guard let pid = content.muxPlaybackID else { return nil }
+        // Mux animated GIF thumbnail for hero gives motion feel; fallback to static
+        return URL(string: "https://image.mux.com/\(pid)/thumbnail.jpg?width=800&height=450&fit_mode=smartcrop&time=2")
+    }
+
     var body: some View {
         ZStack {
-            // Background
-            content.heroGradient.gradient
-                .ignoresSafeArea()
-
+            // Background — real thumbnail or gradient fallback
             GeometryReader { geo in
                 let w = geo.size.width
                 let h = geo.size.height
 
-                // Ambient glow
-                Circle()
-                    .fill(content.heroGradient.accentColor.opacity(0.18))
-                    .frame(width: w * 0.9)
-                    .blur(radius: 55)
-                    .offset(x: w * 0.1, y: -h * 0.12)
-
-                Circle()
-                    .fill(Color.white.opacity(0.03))
-                    .frame(width: w * 0.45)
-                    .offset(x: -w * 0.08, y: h * 0.18)
-
-                // Spotlight
-                RadialGradient(
-                    colors: [content.heroGradient.accentColor.opacity(0.18), .clear],
-                    center: .init(x: 0.72, y: 0.28),
-                    startRadius: 0,
-                    endRadius: w * 0.55
-                )
-                .frame(width: w, height: h)
-
-                // Deterministic grain texture
-                Canvas { ctx, size in
-                    for (nx, ny, r, op) in heroGrainDots {
-                        let x = nx * size.width
-                        let y = ny * size.height
-                        ctx.fill(
-                            Path(ellipseIn: CGRect(x: x, y: y, width: r, height: r)),
-                            with: .color(.white.opacity(op))
-                        )
+                if let url = thumbnailURL {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: w, height: h)
+                                .clipped()
+                                // Slight color tint so UI text stays readable
+                                .overlay(
+                                    content.heroGradient.gradient
+                                        .opacity(0.45)
+                                        .ignoresSafeArea()
+                                )
+                        default:
+                            // Gradient while loading
+                            ZStack {
+                                content.heroGradient.gradient.ignoresSafeArea()
+                                gradientDecoration(w: w, h: h)
+                            }
+                        }
+                    }
+                } else {
+                    ZStack {
+                        content.heroGradient.gradient.ignoresSafeArea()
+                        gradientDecoration(w: w, h: h)
                     }
                 }
-                .allowsHitTesting(false)
             }
+            .ignoresSafeArea()
 
-            // Bottom readability gradient
+            // Bottom readability gradient — tall enough for the info overlay
             VStack {
                 Spacer()
                 LinearGradient(
                     colors: [
                         .clear,
-                        Color.lunaBackground.opacity(0.2),
+                        Color.lunaBackground.opacity(0.15),
                         Color.lunaBackground.opacity(0.75),
+                        Color.lunaBackground.opacity(0.95),
                         Color.lunaBackground
                     ],
-                    startPoint: .top,
+                    startPoint: .init(x: 0.5, y: 0),
                     endPoint: .bottom
                 )
-                .frame(height: UIScreen.main.bounds.height * 0.52)
-            }
-
-            // Watermark letter — decorative
-            VStack {
-                Spacer()
-                HStack {
-                    Spacer()
-                    Text(content.title.prefix(1))
-                        .font(.system(size: 190, weight: .black, design: .rounded))
-                        .foregroundColor(.white.opacity(0.035))
-                        .offset(x: 24, y: 36)
-                }
+                .frame(height: UIScreen.main.bounds.height * 0.60)
             }
         }
         .onTapGesture(perform: onTap)
         .contentShape(Rectangle())
+    }
+
+    @ViewBuilder
+    private func gradientDecoration(w: CGFloat, h: CGFloat) -> some View {
+        Circle()
+            .fill(content.heroGradient.accentColor.opacity(0.18))
+            .frame(width: w * 0.9)
+            .blur(radius: 55)
+            .offset(x: w * 0.1, y: -h * 0.12)
+
+        // Grain texture
+        Canvas { ctx, size in
+            for (nx, ny, r, op) in heroGrainDots {
+                let x = nx * size.width
+                let y = ny * size.height
+                ctx.fill(
+                    Path(ellipseIn: CGRect(x: x, y: y, width: r, height: r)),
+                    with: .color(.white.opacity(op))
+                )
+            }
+        }
+        .allowsHitTesting(false)
     }
 }
 

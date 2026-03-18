@@ -40,12 +40,24 @@ final class UploadJob: Identifiable, ObservableObject {
     @Published var progress: Double = 0
     @Published var speedBytesPerSec: Double = 0
     @Published var recordingDate: Date? = nil
+    @Published var fileName: String? = nil
 
     init(index: Int) {
         self.displayIndex = index
     }
 
-    var displayName: String { "Video \(displayIndex)" }
+    var displayName: String {
+        if let name = fileName, !name.isEmpty {
+            // Strip extension and clean up temp UUID prefix if present
+            let base = URL(fileURLWithPath: name).deletingPathExtension().lastPathComponent
+            // If it's a UUID-looking string, fall back to index label
+            if base.count == 36 && base.filter({ $0 == "-" }).count == 4 {
+                return "Video \(displayIndex)"
+            }
+            return base
+        }
+        return "Video \(displayIndex)"
+    }
 
     var speedString: String {
         guard speedBytesPerSec > 50_000 else { return "" }
@@ -101,6 +113,9 @@ final class UploadManager: ObservableObject {
                 throw NSError(domain: "UploadManager", code: 1,
                               userInfo: [NSLocalizedDescriptionKey: "Kunde inte läsa videofilen."])
             }
+
+            // Set filename from URL for better display
+            job.fileName = movie.url.lastPathComponent
 
             // 2. Extract recording date from video metadata
             job.recordingDate = await VideoMetadata.extractCreationDate(from: movie.url)

@@ -74,50 +74,79 @@ struct ProfileView: View {
 
     private var profileHeader: some View {
         ZStack(alignment: .bottom) {
-            LinearGradient(
-                colors: [
-                    Color.lunaAccent.opacity(0.35),
-                    Color.lunaAccent.opacity(0.1),
-                    Color.lunaBackground
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: 230)
+            // Cinematic two-tone background
+            ZStack {
+                LinearGradient(
+                    colors: [
+                        Color.lunaWarm.opacity(0.20),
+                        Color.lunaAccent.opacity(0.28),
+                        Color.lunaAccent.opacity(0.08),
+                        Color.lunaBackground
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+
+                // Soft blurred glow blobs
+                Circle()
+                    .fill(Color.lunaWarm.opacity(0.18))
+                    .frame(width: 200)
+                    .blur(radius: 60)
+                    .offset(x: -60, y: -40)
+
+                Circle()
+                    .fill(Color.lunaAccent.opacity(0.22))
+                    .frame(width: 180)
+                    .blur(radius: 50)
+                    .offset(x: 70, y: -20)
+            }
+            .frame(height: 260)
             .ignoresSafeArea(edges: .top)
 
             VStack(spacing: 14) {
                 ZStack {
-                    // Glow ring
+                    // Outer glow halo
                     Circle()
-                        .fill(Color.lunaAccent.opacity(0.25))
-                        .frame(width: 110, height: 110)
-                        .blur(radius: 16)
+                        .fill(Color.lunaWarm.opacity(0.18))
+                        .frame(width: 116, height: 116)
+                        .blur(radius: 18)
 
-                    // Avatar
+                    // Avatar ring — warm gradient border
+                    Circle()
+                        .stroke(
+                            LinearGradient(
+                                colors: [Color.lunaWarm.opacity(0.7), Color.lunaAccentLight.opacity(0.4)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 2.5
+                        )
+                        .frame(width: 92, height: 92)
+
+                    // Avatar fill
                     Circle()
                         .fill(vm.user.avatar.gradient)
-                        .frame(width: 88, height: 88)
-                        .overlay(
-                            Circle()
-                                .stroke(Color.white.opacity(0.2), lineWidth: 2)
-                        )
+                        .frame(width: 86, height: 86)
 
                     Text(vm.user.avatar.initials)
                         .font(.system(size: 30, weight: .black, design: .rounded))
                         .foregroundColor(.white)
-
                 }
-                .padding(.top, 56)
+                .padding(.top, 64)
 
-                VStack(spacing: 5) {
+                VStack(spacing: 6) {
                     Text(vm.user.name)
                         .font(LunaFont.title1())
                         .foregroundColor(.white)
 
-                    Text("Lunas videoarkiv")
-                        .font(LunaFont.caption())
-                        .foregroundColor(.lunaTextMuted)
+                    HStack(spacing: 5) {
+                        Image(systemName: "moon.stars.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(.lunaWarm)
+                        Text("Lunas personliga videoarkiv")
+                            .font(LunaFont.caption())
+                            .foregroundColor(.lunaTextMuted)
+                    }
                 }
             }
         }

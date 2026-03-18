@@ -41,12 +41,17 @@ struct HomeView: View {
                         if vm.isLoading {
                             skeletonRows
                         } else {
-                            ForEach(vm.categories) { category in
+                            ForEach(Array(vm.categories.enumerated()), id: \.element.id) { index, category in
                                 ContentRowView(
                                     category: category,
                                     onTap: { selectedContent = $0 }
                                 )
                                 .padding(.bottom, 8)
+                                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                                .animation(
+                                    .easeOut(duration: 0.4).delay(Double(index) * 0.06),
+                                    value: vm.isLoading
+                                )
                             }
                         }
                     }
@@ -67,6 +72,16 @@ struct HomeView: View {
             .onPreferenceChange(ScrollOffsetKey.self) { value in
                 scrollOffset = value
             }
+            .refreshable {
+                await withCheckedContinuation { continuation in
+                    vm.refresh()
+                    // Give the load task a moment to fire, then resolve
+                    Task {
+                        try? await Task.sleep(for: .milliseconds(800))
+                        continuation.resume()
+                    }
+                }
+            }
 
             // Navigation bar — always present, background fades in on scroll
             navigationBar
@@ -74,7 +89,10 @@ struct HomeView: View {
         .sheet(item: $selectedContent) { content in
             ContentDetailView(content: content)
         }
-        .sheet(isPresented: $showUpload) {
+        .sheet(isPresented: $showUpload, onDismiss: {
+            // Refresh library so any newly uploaded video appears
+            vm.refreshAfterUpload()
+        }) {
             UploadView()
         }
     }
@@ -179,17 +197,30 @@ struct HomeView: View {
 
     private var skeletonRows: some View {
         VStack(alignment: .leading, spacing: 28) {
-            ForEach(0..<3, id: \.self) { _ in
-                VStack(alignment: .leading, spacing: 12) {
-                    Rectangle()
-                        .fill(Color.lunaElevated)
-                        .frame(width: 140, height: 18)
-                        .cornerRadius(5)
-                        .shimmering()
+            // Wide card row skeleton
+            VStack(alignment: .leading, spacing: 12) {
+                skeletonLabel(width: 160)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(0..<4, id: \.self) { _ in
+                            Rectangle()
+                                .fill(Color.lunaCard)
+                                .frame(width: 240, height: 135)
+                                .cornerRadius(12)
+                                .shimmering()
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+            }
 
+            // Standard poster row skeleton
+            ForEach(0..<2, id: \.self) { _ in
+                VStack(alignment: .leading, spacing: 12) {
+                    skeletonLabel(width: 120)
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 10) {
-                            ForEach(0..<5, id: \.self) { _ in
+                            ForEach(0..<6, id: \.self) { _ in
                                 Rectangle()
                                     .fill(Color.lunaCard)
                                     .frame(width: 120, height: 180)
@@ -203,6 +234,16 @@ struct HomeView: View {
             }
         }
         .padding(.top, 16)
+        .transition(.opacity.animation(.easeIn(duration: 0.3)))
+    }
+
+    private func skeletonLabel(width: CGFloat) -> some View {
+        Rectangle()
+            .fill(Color.lunaElevated)
+            .frame(width: width, height: 16)
+            .cornerRadius(5)
+            .padding(.horizontal, 16)
+            .shimmering()
     }
 }
 

@@ -7,6 +7,11 @@ struct ContentDetailView: View {
     @State private var isInWatchlist = false
     @State private var selectedSeason = 1
     @State private var selectedNestedContent: LunaContent? = nil
+    @State private var showDeleteConfirm = false
+    @State private var isDeleting = false
+    @State private var showEditTitle = false
+    @State private var editedTitle = ""
+    @State private var isSavingTitle = false
     @ObservedObject private var dm = DownloadManager.shared
 
     private var filteredEpisodes: [Episode] {
@@ -67,73 +72,178 @@ struct ContentDetailView: View {
         .sheet(item: $selectedNestedContent) { item in
             ContentDetailView(content: item)
         }
+        .confirmationDialog(
+            "Radera video?",
+            isPresented: $showDeleteConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Radera permanent", role: .destructive) {
+                Task { await deleteVideo() }
+            }
+        } message: {
+            Text("Videon raderas från Mux och kan inte återställas.")
+        }
+        .alert("Ändra titel", isPresented: $showEditTitle) {
+            TextField("Titel", text: $editedTitle)
+                .autocorrectionDisabled()
+            Button("Spara") {
+                Task { await saveTitle() }
+            }
+            .disabled(editedTitle.trimmingCharacters(in: .whitespaces).isEmpty)
+            Button("Avbryt", role: .cancel) {}
+        } message: {
+            Text("Ange ett nytt namn för videon.")
+        }
+    }
+
+    private func saveTitle() async {
+        guard let muxID = content.muxPlaybackID else { return }
+        let newTitle = editedTitle.trimmingCharacters(in: .whitespaces)
+        guard !newTitle.isEmpty else { return }
+        isSavingTitle = true
+        do {
+            let assets = try await MuxService.shared.listAssets()
+            if let asset = assets.first(where: { $0.primaryPlaybackID == muxID }) {
+                try await MuxService.shared.updateAssetPassthrough(
+                    id: asset.id,
+                    title: newTitle,
+                    recordingDate: content.recordingDate
+                )
+                LunaHaptic.success()
+            }
+        } catch {}
+        isSavingTitle = false
+    }
+
+    private func deleteVideo() async {
+        guard let muxID = content.muxPlaybackID else { return }
+        isDeleting = true
+        // Extract asset ID from playback ID is not possible directly — we need to
+        // search ContentStore for the matching Mux asset ID. We use the content.id
+        // which maps to the muxPlaybackID indirectly.
+        // Best approach: find the asset via the stored playbackID in ContentStore.
+        // Since MuxService works with asset IDs, we list and match.
+        do {
+            let assets = try await MuxService.shared.listAssets()
+            if let asset = assets.first(where: { $0.primaryPlaybackID == muxID }) {
+                try await MuxService.shared.deleteAsset(id: asset.id)
+                LunaHaptic.success()
+            }
+        } catch {
+            // Silently fail — user can try again
+        }
+        isDeleting = false
+        dismiss()
     }
 
     // MARK: - Hero
 
+    private var heroThumbnailURL: URL? {
+        guard let pid = content.muxPlaybackID else { return nil }
+        return URL(string: "https://image.mux.com/\(pid)/thumbnail.jpg?width=800&height=450&fit_mode=smartcrop&time=2")
+    }
+
     private var heroSection: some View {
         ZStack {
-            // Background gradient
-            content.heroGradient.gradient
-                .ignoresSafeArea(edges: .top)
-
+            // Background — real thumbnail when available
             GeometryReader { geo in
                 let w = geo.size.width
 
-                // Glow blobs
-                Circle()
-                    .fill(content.heroGradient.accentColor.opacity(0.22))
-                    .frame(width: w * 0.8)
-                    .blur(radius: 50)
-                    .offset(x: w * 0.12, y: -40)
-                    .allowsHitTesting(false)
-
-                // Watermark letter
-                Text(content.title.prefix(1))
-                    .font(.system(size: 210, weight: .black, design: .rounded))
-                    .foregroundColor(.white.opacity(0.055))
-                    .offset(x: w * 0.28, y: -10)
-                    .allowsHitTesting(false)
+                if let url = heroThumbnailURL {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: w, height: 380)
+                                .clipped()
+                                .overlay(
+                                    content.heroGradient.gradient
+                                        .opacity(0.30)
+                                        .ignoresSafeArea(edges: .top)
+                                )
+                                .transition(.opacity.animation(.easeIn(duration: 0.3)))
+                        case .failure:
+                            gradientHero(w: w)
+                        default:
+                            gradientHero(w: w)
+                                .overlay(
+                                    Rectangle()
+                                        .fill(Color.lunaCard.opacity(0.4))
+                                        .shimmering()
+                                        .ignoresSafeArea(edges: .top)
+                                )
+                        }
+                    }
+                } else {
+                    gradientHero(w: w)
+                }
             }
+            .ignoresSafeArea(edges: .top)
 
-            // Bottom gradient
+            // Bottom gradient — richer fade for readability
             VStack {
                 Spacer()
                 LinearGradient(
                     colors: [
                         .clear,
-                        Color.lunaBackground.opacity(0.4),
-                        Color.lunaBackground.opacity(0.85),
+                        Color.lunaBackground.opacity(0.25),
+                        Color.lunaBackground.opacity(0.72),
+                        Color.lunaBackground.opacity(0.93),
                         Color.lunaBackground
                     ],
-                    startPoint: .init(x: 0, y: 0.2),
+                    startPoint: .init(x: 0.5, y: 0),
                     endPoint: .bottom
                 )
-                .frame(height: 220)
+                .frame(height: 240)
             }
 
-            // Centered play button
+            // Centered play button — larger, more confident
             Button {
                 LunaHaptic.medium()
                 showPlayer = true
             } label: {
                 ZStack {
+                    // Outer glow ring
+                    Circle()
+                        .fill(Color.white.opacity(0.06))
+                        .frame(width: 96, height: 96)
                     Circle()
                         .fill(.ultraThinMaterial)
-                        .frame(width: 72, height: 72)
+                        .frame(width: 80, height: 80)
                         .overlay(
                             Circle()
-                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                                .stroke(Color.white.opacity(0.25), lineWidth: 1.5)
                         )
                     Image(systemName: "play.fill")
-                        .font(.system(size: 28, weight: .bold))
+                        .font(.system(size: 32, weight: .bold))
                         .foregroundColor(.white)
-                        .offset(x: 2)
+                        .offset(x: 3)
                 }
             }
-            .buttonStyle(LunaPressStyle(scale: 0.92))
-            .lunaGlow(color: .white, radius: 12)
+            .buttonStyle(LunaPressStyle(scale: 0.90))
+            .lunaGlow(color: .white, radius: 18)
         }
+    }
+
+    @ViewBuilder
+    private func gradientHero(w: CGFloat) -> some View {
+        content.heroGradient.gradient
+            .ignoresSafeArea(edges: .top)
+
+        Circle()
+            .fill(content.heroGradient.accentColor.opacity(0.22))
+            .frame(width: w * 0.8)
+            .blur(radius: 50)
+            .offset(x: w * 0.12, y: -40)
+            .allowsHitTesting(false)
+
+        Text(content.title.prefix(1))
+            .font(.system(size: 210, weight: .black, design: .rounded))
+            .foregroundColor(.white.opacity(0.055))
+            .offset(x: w * 0.28, y: -10)
+            .allowsHitTesting(false)
     }
 
     // MARK: - Content Info
@@ -154,12 +264,28 @@ struct ContentDetailView: View {
                 }
             }
 
-            // Title
-            Text(content.title)
-                .font(LunaFont.hero())
-                .foregroundColor(.white)
-                .lineLimit(3)
-                .fixedSize(horizontal: false, vertical: true)
+            // Title + edit button
+            HStack(alignment: .top, spacing: 8) {
+                Text(content.title)
+                    .font(LunaFont.hero())
+                    .foregroundColor(.white)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if content.muxPlaybackID != nil {
+                    Button {
+                        LunaHaptic.light()
+                        editedTitle = content.title
+                        showEditTitle = true
+                    } label: {
+                        Image(systemName: "pencil.circle")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.lunaTextMuted)
+                            .padding(.top, 6)
+                    }
+                    .buttonStyle(LunaPressStyle())
+                }
+            }
 
             // Subtitle
             if !content.subtitle.isEmpty {
@@ -383,8 +509,22 @@ struct ContentDetailView: View {
 
     private func lunaAgeRow(date: Date) -> some View {
         HStack(spacing: 14) {
-            Text("🌙")
-                .font(.system(size: 28))
+            // Moon icon in warm glow circle
+            ZStack {
+                Circle()
+                    .fill(Color.lunaWarm.opacity(0.15))
+                    .frame(width: 48, height: 48)
+                Image(systemName: "moon.stars.fill")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color.lunaWarm, Color.lunaAccentLight],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+            .lunaGlow(color: .lunaWarm, radius: 8)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(LunaAge.ageLabel(at: date))
@@ -405,9 +545,15 @@ struct ContentDetailView: View {
             Spacer()
         }
         .padding(14)
-        .background(Color.lunaAccent.opacity(0.07))
-        .cornerRadius(14)
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.lunaAccentLight.opacity(0.15), lineWidth: 1))
+        .background(
+            LinearGradient(
+                colors: [Color.lunaWarm.opacity(0.08), Color.lunaAccent.opacity(0.05)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .cornerRadius(16)
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.lunaWarm.opacity(0.18), lineWidth: 1))
     }
 
     // MARK: - Description
@@ -478,10 +624,38 @@ struct ContentDetailView: View {
         }
     }
 
-    // MARK: - Similar
+    // MARK: - Similar / More clips
 
     private var similarSection: some View {
-        EmptyView()
+        let others = ContentStore.shared.allContent
+            .filter { $0.id != content.id }
+            .prefix(8)
+
+        return Group {
+            if !others.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Fler klipp")
+                        .font(LunaFont.title3())
+                        .foregroundColor(.lunaTextPrimary)
+                        .padding(.horizontal, 16)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ForEach(Array(others)) { item in
+                                Button {
+                                    LunaHaptic.light()
+                                    selectedNestedContent = item
+                                } label: {
+                                    WideCard(content: item, width: 220, height: 128)
+                                }
+                                .buttonStyle(LunaPressStyle())
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                    }
+                }
+            }
+        }
     }
 
     // MARK: - Top Nav
@@ -505,21 +679,51 @@ struct ContentDetailView: View {
 
             Spacer()
 
-            Button {
-                LunaHaptic.light()
-                // Share sheet would go here
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(.ultraThinMaterial)
-                        .frame(width: 38, height: 38)
-                        .overlay(Circle().stroke(Color.white.opacity(0.1), lineWidth: 1))
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.white)
+            HStack(spacing: 10) {
+                // Share button — opens system share sheet with Mux stream URL
+                if let pid = content.muxPlaybackID,
+                   let shareURL = URL(string: "https://stream.mux.com/\(pid).m3u8") {
+                    ShareLink(item: shareURL, subject: Text(content.title), message: Text("Titta på \(content.title) i Lunaflix")) {
+                        ZStack {
+                            Circle()
+                                .fill(.ultraThinMaterial)
+                                .frame(width: 38, height: 38)
+                                .overlay(Circle().stroke(Color.white.opacity(0.1), lineWidth: 1))
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .buttonStyle(LunaPressStyle())
+                }
+
+                // Delete button (only if Mux playback ID exists)
+                if content.muxPlaybackID != nil {
+                    Button {
+                        LunaHaptic.medium()
+                        showDeleteConfirm = true
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(.ultraThinMaterial)
+                                .frame(width: 38, height: 38)
+                                .overlay(Circle().stroke(Color.white.opacity(0.1), lineWidth: 1))
+                            if isDeleting {
+                                ProgressView()
+                                    .progressViewStyle(.circular)
+                                    .scaleEffect(0.65)
+                                    .tint(.white)
+                            } else {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(.red.opacity(0.85))
+                            }
+                        }
+                    }
+                    .buttonStyle(LunaPressStyle())
+                    .disabled(isDeleting)
                 }
             }
-            .buttonStyle(LunaPressStyle())
         }
         .padding(.horizontal, 16)
         .padding(.top, 56)

@@ -3,11 +3,19 @@ import SwiftUI
 @MainActor
 final class ProfileViewModel: ObservableObject {
     @Published var user: User
-    @Published var showingSettings = false
-    @Published var notificationsEnabled = true
-    @Published var autoplayEnabled = true
-    @Published var downloadQuality: DownloadQuality = .high
-    @Published var streamingQuality: StreamingQuality = .auto
+
+    @Published var notificationsEnabled: Bool {
+        didSet { UserDefaults.standard.set(notificationsEnabled, forKey: "lunaflix.notificationsEnabled") }
+    }
+    @Published var autoplayEnabled: Bool {
+        didSet { UserDefaults.standard.set(autoplayEnabled, forKey: "lunaflix.autoplayEnabled") }
+    }
+    @Published var downloadQuality: DownloadQuality {
+        didSet { UserDefaults.standard.set(downloadQuality.rawValue, forKey: "lunaflix.downloadQuality") }
+    }
+    @Published var streamingQuality: StreamingQuality {
+        didSet { UserDefaults.standard.set(streamingQuality.rawValue, forKey: "lunaflix.streamingQuality") }
+    }
 
     enum DownloadQuality: String, CaseIterable {
         case standard = "Standard"
@@ -24,15 +32,11 @@ final class ProfileViewModel: ObservableObject {
 
     init(user: User = User.mock) {
         self.user = user
-    }
-
-    var stats: [(label: String, value: String)] {
-        [
-            ("Tittar på", "\(user.watchHistory.count) titlar"),
-            ("Bevakningslista", "\(user.watchlist.count) titlar"),
-            ("Nedladdningar", "3 titlar"),
-            ("Prenumeration", user.isPremium ? "Premium" : "Bas")
-        ]
+        let ud = UserDefaults.standard
+        self.notificationsEnabled = ud.object(forKey: "lunaflix.notificationsEnabled") as? Bool ?? true
+        self.autoplayEnabled      = ud.object(forKey: "lunaflix.autoplayEnabled") as? Bool ?? true
+        self.downloadQuality      = DownloadQuality(rawValue: ud.string(forKey: "lunaflix.downloadQuality") ?? "") ?? .high
+        self.streamingQuality     = StreamingQuality(rawValue: ud.string(forKey: "lunaflix.streamingQuality") ?? "") ?? .auto
     }
 
     var recentActivity: [LunaContent] { Array(user.watchHistory.prefix(4)) }

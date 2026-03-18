@@ -68,7 +68,13 @@ final class SearchViewModel: ObservableObject {
             let q = query.lowercased()
             pool = pool.filter {
                 $0.title.lowercased().contains(q) ||
-                $0.description.lowercased().contains(q)
+                $0.description.lowercased().contains(q) ||
+                // Also search on Luna's age label, e.g. "1 år" "3 månader"
+                ($0.lunaAgeAtRecording?.lowercased().contains(q) ?? false) ||
+                // And formatted recording date, e.g. year "2024"
+                ($0.recordingDate.map {
+                    LunaAge.formatted($0).lowercased().contains(q)
+                } ?? false)
             }
         }
 

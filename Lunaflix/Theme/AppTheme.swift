@@ -16,6 +16,7 @@ extension Color {
     static let lunaCyan          = Color(hex: "06B6D4")   // Electric cyan
     static let lunaGold          = Color(hex: "F59E0B")   // Warm gold
     static let lunaPink          = Color(hex: "EC4899")   // Hot pink
+    static let lunaWarm          = Color(hex: "F472B6")   // Warm rose — family warmth accent
 
     // Text
     static let lunaTextPrimary   = Color.white
@@ -170,6 +171,8 @@ extension Animation {
     static let lunaSpring = Animation.spring(response: 0.4, dampingFraction: 0.75)
     static let lunaSnappy = Animation.spring(response: 0.3, dampingFraction: 0.85)
     static let lunaSmooth = Animation.easeInOut(duration: 0.35)
+    static let lunaBounce = Animation.spring(response: 0.45, dampingFraction: 0.6, blendDuration: 0)
+    static let lunaGentle = Animation.easeInOut(duration: 0.55)
 }
 
 // MARK: - Corner Radius Helpers
@@ -210,9 +213,81 @@ struct LunaProgressBar: View {
                 Capsule()
                     .fill(color)
                     .frame(width: max(0, geo.size.width * CGFloat(progress)), height: height)
+                    .animation(.lunaSmooth, value: progress)
             }
         }
         .frame(height: height)
+    }
+}
+
+// MARK: - Reduce Motion helper
+
+extension View {
+    /// Conditionally suppresses animations when the user has requested reduced motion.
+    func lunaAnimation<V: Equatable>(_ animation: Animation, value: V) -> some View {
+        modifier(ReduceMotionAnimationModifier(animation: animation, value: value))
+    }
+}
+
+private struct ReduceMotionAnimationModifier<V: Equatable>: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let animation: Animation
+    let value: V
+
+    func body(content: Content) -> some View {
+        content.animation(reduceMotion ? .none : animation, value: value)
+    }
+}
+
+// MARK: - Mux Thumbnail Image
+
+/// Centralised reusable view for Mux thumbnail images.
+/// Handles loading shimmer, fade-in on success, gradient fallback on failure.
+struct MuxThumbnailImage: View {
+    let playbackID: String?
+    let fallbackGradient: ThumbnailStyle
+    var width: CGFloat
+    var height: CGFloat
+    /// Mux time-offset in seconds for the thumbnail frame (defaults to 2 s)
+    var timeOffset: Double = 2
+
+    private var thumbnailURL: URL? {
+        guard let pid = playbackID else { return nil }
+        let w = Int(width * UIScreen.main.scale)
+        let h = Int(height * UIScreen.main.scale)
+        return URL(string: "https://image.mux.com/\(pid)/thumbnail.jpg?width=\(w)&height=\(h)&fit_mode=smartcrop&time=\(Int(timeOffset))")
+    }
+
+    var body: some View {
+        Group {
+            if let url = thumbnailURL {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: width, height: height)
+                            .clipped()
+                            .transition(.opacity.animation(.easeIn(duration: 0.25)))
+                    case .failure:
+                        gradientFallback
+                    default:
+                        gradientFallback
+                            .shimmering()
+                    }
+                }
+            } else {
+                gradientFallback
+            }
+        }
+        .frame(width: width, height: height)
+    }
+
+    private var gradientFallback: some View {
+        Rectangle()
+            .fill(fallbackGradient.gradient)
+            .frame(width: width, height: height)
     }
 }
 

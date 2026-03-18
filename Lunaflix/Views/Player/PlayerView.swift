@@ -446,7 +446,7 @@ struct PlayerView: View {
             tearDown()
         }
         .sheet(isPresented: $showSettings) {
-            PlayerSettingsSheet()
+            PlayerSettingsSheet(player: vm.player)
         }
     }
 
@@ -531,14 +531,29 @@ struct PlayerView: View {
     // MARK: - Buffer Spinner
 
     private var bufferSpinner: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 14) {
             ProgressView()
                 .progressViewStyle(.circular)
                 .scaleEffect(1.4)
                 .tint(.white)
-            Text("Buffrar…")
-                .font(LunaFont.caption())
-                .foregroundColor(.white.opacity(0.6))
+
+            VStack(spacing: 4) {
+                Text("Buffrar…")
+                    .font(LunaFont.caption())
+                    .foregroundColor(.white.opacity(0.6))
+
+                // Show Luna's age at recording while loading — a warm personal touch
+                if let age = vm.currentContent.lunaAgeAtRecording {
+                    HStack(spacing: 4) {
+                        Image(systemName: "moon.stars.fill")
+                            .font(.system(size: 9))
+                            .foregroundColor(.lunaWarm.opacity(0.8))
+                        Text(age)
+                            .font(LunaFont.tag())
+                            .foregroundColor(.lunaWarm.opacity(0.8))
+                    }
+                }
+            }
         }
     }
 
@@ -714,8 +729,8 @@ struct PlayerView: View {
 
             // Action row
             HStack {
-                Button {} label: {
-                    Label("Textning", systemImage: "captions.bubble.fill")
+                Button { showSettings = true } label: {
+                    Label("Kvalitet", systemImage: "slider.horizontal.3")
                         .font(LunaFont.caption())
                         .foregroundColor(.white.opacity(0.75))
                 }
@@ -1001,24 +1016,58 @@ private struct UpNextCard: View {
 // MARK: - Player Settings Sheet
 
 struct PlayerSettingsSheet: View {
+    let player: AVQueuePlayer
     @Environment(\.dismiss) private var dismiss
 
-    let qualities  = ["Automatisk", "4K Ultra HD", "HD 1080p", "HD 720p", "SD"]
-    let languages  = ["Svenska", "Engelska", "Norska", "Danska"]
-    let subtitles  = ["Av", "Svenska", "Engelska"]
+    // Map label → peak bitrate cap (0 = no cap = auto)
+    private let qualityOptions: [(label: String, bitrate: Double)] = [
+        ("Automatisk",  0),
+        ("HD 1080p",    8_000_000),
+        ("HD 720p",     4_000_000),
+        ("SD",          1_500_000)
+    ]
 
     @State private var selectedQuality = "Automatisk"
-    @State private var selectedLang    = "Svenska"
-    @State private var selectedSub     = "Av"
 
     var body: some View {
         NavigationStack {
             ZStack {
                 Color.lunaSurface.ignoresSafeArea()
                 List {
-                    settingsSection("Kvalitet",  options: qualities,  selected: $selectedQuality)
-                    settingsSection("Ljud",      options: languages,  selected: $selectedLang)
-                    settingsSection("Textning",  options: subtitles,  selected: $selectedSub)
+                    Section("Videokvalitet") {
+                        ForEach(qualityOptions, id: \.label) { option in
+                            Button {
+                                LunaHaptic.selection()
+                                selectedQuality = option.label
+                                applyQuality(bitrate: option.bitrate)
+                            } label: {
+                                HStack {
+                                    Text(option.label)
+                                        .foregroundColor(.lunaTextPrimary)
+                                    Spacer()
+                                    if selectedQuality == option.label {
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 13, weight: .semibold))
+                                            .foregroundColor(.lunaAccentLight)
+                                    }
+                                }
+                            }
+                            .listRowBackground(Color.lunaCard)
+                        }
+                    }
+
+                    Section("Information") {
+                        HStack(spacing: 8) {
+                            Image(systemName: "info.circle")
+                                .foregroundColor(.lunaTextMuted)
+                                .font(.system(size: 13))
+                            Text("Ljud- och textningsspår styrs av iOS systeminställningar för media.")
+                                .font(LunaFont.caption())
+                                .foregroundColor(.lunaTextMuted)
+                                .lineSpacing(3)
+                        }
+                        .listRowBackground(Color.lunaCard)
+                    }
                 }
                 .scrollContentBackground(.hidden)
                 .background(Color.lunaSurface)
@@ -1037,26 +1086,7 @@ struct PlayerSettingsSheet: View {
         .presentationDragIndicator(.visible)
     }
 
-    @ViewBuilder
-    private func settingsSection(_ title: String, options: [String], selected: Binding<String>) -> some View {
-        Section(title) {
-            ForEach(options, id: \.self) { opt in
-                Button {
-                    LunaHaptic.selection()
-                    selected.wrappedValue = opt
-                } label: {
-                    HStack {
-                        Text(opt).foregroundColor(.lunaTextPrimary)
-                        Spacer()
-                        if selected.wrappedValue == opt {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(.lunaAccentLight)
-                        }
-                    }
-                }
-                .listRowBackground(Color.lunaCard)
-            }
-        }
+    private func applyQuality(bitrate: Double) {
+        player.currentItem?.preferredPeakBitRate = bitrate
     }
 }

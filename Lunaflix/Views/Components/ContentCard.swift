@@ -1,6 +1,7 @@
 import SwiftUI
 
 // MARK: - Poster Card (Standard)
+// Width 120 × Height 180 — portrait poster format
 
 struct PosterCard: View {
     let content: LunaContent
@@ -9,26 +10,23 @@ struct PosterCard: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            // Background gradient
-            Rectangle()
-                .fill(content.thumbnailGradient.gradient)
-                .frame(width: width, height: height)
-
-            // Decorative circle
-            Circle()
-                .fill(.white.opacity(0.05))
-                .frame(width: width * 0.75)
-                .offset(x: -width * 0.15, y: -width * 0.15)
+            // Real Mux thumbnail with shimmer loading + gradient fallback
+            MuxThumbnailImage(
+                playbackID: content.muxPlaybackID,
+                fallbackGradient: content.thumbnailGradient,
+                width: width,
+                height: height
+            )
 
             // Bottom info overlay
             VStack(spacing: 0) {
                 Spacer()
                 LinearGradient(
-                    colors: [.clear, .black.opacity(0.85)],
+                    colors: [.clear, .black.opacity(0.90)],
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .frame(height: height * 0.45)
+                .frame(height: height * 0.50)
                 .overlay(
                     VStack(alignment: .leading, spacing: 3) {
                         Spacer()
@@ -37,10 +35,17 @@ struct PosterCard: View {
                             .foregroundColor(.white)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
-                        Text(content.genreString)
-                            .font(.system(size: 9, weight: .medium, design: .rounded))
-                            .foregroundColor(.white.opacity(0.55))
-                            .lineLimit(1)
+                        if let age = content.lunaAgeAtRecording {
+                            Text(age)
+                                .font(.system(size: 9, weight: .medium, design: .rounded))
+                                .foregroundColor(.lunaWarm.opacity(0.9))
+                                .lineLimit(1)
+                        } else if !content.genreString.isEmpty {
+                            Text(content.genreString)
+                                .font(.system(size: 9, weight: .medium, design: .rounded))
+                                .foregroundColor(.white.opacity(0.55))
+                                .lineLimit(1)
+                        }
                     }
                     .padding(.horizontal, 8)
                     .padding(.bottom, 8),
@@ -100,30 +105,23 @@ struct WideCard: View {
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
-            Rectangle()
-                .fill(content.thumbnailGradient.gradient)
-                .frame(width: width, height: height)
-
-            // Decorative circles
-            Circle()
-                .fill(.white.opacity(0.04))
-                .frame(width: width * 0.55)
-                .offset(x: width * 0.45, y: -height * 0.12)
+            // Real Mux thumbnail with shimmer and gradient fallback
+            MuxThumbnailImage(
+                playbackID: content.muxPlaybackID,
+                fallbackGradient: content.thumbnailGradient,
+                width: width,
+                height: height
+            )
 
             // Bottom overlay
             LinearGradient(
-                colors: [.clear, .black.opacity(0.8)],
-                startPoint: .init(x: 0, y: 0.3),
+                colors: [.clear, .black.opacity(0.88)],
+                startPoint: .init(x: 0, y: 0.28),
                 endPoint: .bottom
             )
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Text(content.type.rawValue.uppercased())
-                        .font(.system(size: 9, weight: .black, design: .rounded))
-                        .foregroundColor(content.thumbnailGradient.accentColor)
-                        .tracking(1)
-
                     if content.isNew {
                         Text("NY")
                             .font(LunaFont.tag())
@@ -153,17 +151,18 @@ struct WideCard: View {
                     .foregroundColor(.white)
                     .lineLimit(1)
 
-                // Show Luna's age at recording for Mux library clips
-                if let date = content.recordingDate {
+                // Luna age at recording — the central emotional data point
+                if let age = content.lunaAgeAtRecording {
                     HStack(spacing: 4) {
-                        Text("🌙")
-                            .font(.system(size: 10))
-                        Text(LunaAge.ageShort(at: date))
+                        Image(systemName: "moon.stars.fill")
+                            .font(.system(size: 9))
+                            .foregroundColor(.lunaWarm)
+                        Text(age)
                             .font(LunaFont.tag())
-                            .foregroundColor(.lunaAccentLight)
+                            .foregroundColor(.lunaWarm)
                     }
                 } else {
-                    Text(content.genreString)
+                    Text(content.duration)
                         .font(LunaFont.caption())
                         .foregroundColor(.lunaTextSecondary)
                 }
@@ -199,20 +198,18 @@ struct Top10Card: View {
         ZStack(alignment: .bottomLeading) {
             // Poster
             ZStack(alignment: .topLeading) {
-                Rectangle()
-                    .fill(content.thumbnailGradient.gradient)
-                    .frame(width: width, height: width * 1.45)
-
-                Circle()
-                    .fill(.white.opacity(0.05))
-                    .frame(width: width * 0.7)
-                    .offset(x: -width * 0.1, y: -width * 0.1)
+                MuxThumbnailImage(
+                    playbackID: content.muxPlaybackID,
+                    fallbackGradient: content.thumbnailGradient,
+                    width: width,
+                    height: width * 1.45
+                )
 
                 // Content name at bottom
                 VStack {
                     Spacer()
                     LinearGradient(
-                        colors: [.clear, .black.opacity(0.8)],
+                        colors: [.clear, .black.opacity(0.82)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -261,21 +258,26 @@ struct FeaturedCard: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Rectangle()
-                .fill(content.thumbnailGradient.gradient)
-                .frame(width: width, height: width * 1.4)
+            MuxThumbnailImage(
+                playbackID: content.muxPlaybackID,
+                fallbackGradient: content.thumbnailGradient,
+                width: width,
+                height: width * 1.4
+            )
 
-            // Soft glow blob
-            Circle()
-                .fill(content.thumbnailGradient.accentColor.opacity(0.25))
-                .frame(width: width * 0.9)
-                .blur(radius: 28)
-                .offset(y: -width * 0.25)
-                .allowsHitTesting(false)
+            // Soft glow blob — only shown over gradient fallback, fades when image loads
+            if content.muxPlaybackID == nil {
+                Circle()
+                    .fill(content.thumbnailGradient.accentColor.opacity(0.25))
+                    .frame(width: width * 0.9)
+                    .blur(radius: 28)
+                    .offset(y: -width * 0.25)
+                    .allowsHitTesting(false)
+            }
 
             LinearGradient(
-                colors: [.clear, .black.opacity(0.9)],
-                startPoint: .init(x: 0, y: 0.35),
+                colors: [.clear, .black.opacity(0.92)],
+                startPoint: .init(x: 0, y: 0.33),
                 endPoint: .bottom
             )
 
@@ -308,9 +310,20 @@ struct FeaturedCard: View {
                     .foregroundColor(.white)
                     .lineLimit(2)
 
-                Text(content.genreString)
-                    .font(LunaFont.caption())
-                    .foregroundColor(.lunaTextSecondary.opacity(0.8))
+                if let age = content.lunaAgeAtRecording {
+                    HStack(spacing: 4) {
+                        Image(systemName: "moon.stars.fill")
+                            .font(.system(size: 9))
+                            .foregroundColor(.lunaWarm)
+                        Text(age)
+                            .font(LunaFont.caption())
+                            .foregroundColor(.lunaWarm)
+                    }
+                } else {
+                    Text(content.genreString)
+                        .font(LunaFont.caption())
+                        .foregroundColor(.lunaTextSecondary.opacity(0.8))
+                }
             }
             .padding(12)
         }
@@ -332,21 +345,18 @@ struct ContinueWatchingCard: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            // Thumbnail
-            Rectangle()
-                .fill(content.thumbnailGradient.gradient)
-                .frame(width: width, height: 140)
-
-            // Decorative
-            Circle()
-                .fill(.white.opacity(0.04))
-                .frame(width: width * 0.5)
-                .offset(x: width * 0.25, y: -20)
+            // Real thumbnail
+            MuxThumbnailImage(
+                playbackID: content.muxPlaybackID,
+                fallbackGradient: content.thumbnailGradient,
+                width: width,
+                height: 140
+            )
 
             // Gradient overlay
             LinearGradient(
-                colors: [.clear, .black.opacity(0.85)],
-                startPoint: .init(x: 0, y: 0.25),
+                colors: [.clear, .black.opacity(0.88)],
+                startPoint: .init(x: 0, y: 0.22),
                 endPoint: .bottom
             )
 

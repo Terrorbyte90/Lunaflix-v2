@@ -130,6 +130,20 @@ actor MuxService {
         throw MuxError.assetPollingTimeout
     }
 
+    // MARK: - Update Asset (patch title/passthrough)
+
+    func updateAssetPassthrough(id: String, title: String, recordingDate: Date?) async throws {
+        let passthrough = MuxPassthroughMeta.encode(title: title.isEmpty ? nil : title,
+                                                     recordingDate: recordingDate)
+        struct PatchBody: Encodable {
+            let passthrough: String?
+        }
+        let bodyData = try JSONEncoder().encode(PatchBody(passthrough: passthrough))
+        let req = try authorizedRequest(path: "/video/v1/assets/\(id)", method: "PATCH", body: bodyData)
+        let (_, response) = try await session.data(for: req)
+        try validate(response)
+    }
+
     // MARK: - Delete Asset
 
     func deleteAsset(id: String) async throws {
