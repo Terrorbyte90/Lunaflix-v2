@@ -61,25 +61,21 @@
 
 - [ ] **Open `Lunaflix/Models/Content.swift`**
 
-- [ ] **Add `assetId` field to LunaContent struct (after `muxPlaybackID`):**
+- [ ] **Add `assetId` field to LunaContent struct.** Insert ONLY the `assetId` line immediately after `let muxPlaybackID: String?` (line 24). Do NOT re-insert `recordingDate` — it already exists on line 25:
   ```swift
-  let muxPlaybackID: String?
+  // Insert after line 24 (let muxPlaybackID: String?):
   let assetId: String?          // Mux asset ID — enables direct edit/delete without re-listing
-  let recordingDate: Date?
   ```
 
-- [ ] **Add `assetId` to the init signature (after `muxPlaybackID` param):**
+- [ ] **Add `assetId` to the init signature.** Insert ONLY the `assetId` parameter immediately after `muxPlaybackID: String? = nil` in the init. Do NOT re-insert `recordingDate`:
   ```swift
-  muxPlaybackID: String? = nil,
+  // Insert after muxPlaybackID param:
   assetId: String? = nil,
-  recordingDate: Date? = nil
   ```
 
-- [ ] **Add `self.assetId = assetId` to init body (after `self.muxPlaybackID = muxPlaybackID`):**
+- [ ] **Add `self.assetId = assetId` to init body.** Insert ONLY this line immediately after `self.muxPlaybackID = muxPlaybackID`:
   ```swift
-  self.muxPlaybackID = muxPlaybackID
   self.assetId = assetId
-  self.recordingDate = recordingDate
   ```
 
 - [ ] **Update `fromMuxAsset(_:)` to populate assetId (in the `return LunaContent(` call):**
@@ -371,12 +367,10 @@
 
       // Append artwork asynchronously from Kingfisher cache (non-blocking)
       let capturedItem = item
-      let capturedTitle = content.title
-      Task.detached { [weak self] in
+      Task.detached {
+          // Kingfisher 8.x: pass URL directly (ImageResource was removed in Kingfisher 8)
           guard let url = content.thumbnailURL else { return }
-          if let result = try? await KingfisherManager.shared.retrieveImage(
-              with: ImageResource(downloadURL: url)
-          ) {
+          if let result = try? await KingfisherManager.shared.retrieveImage(with: url) {
               let artItem = AVMutableMetadataItem()
               artItem.identifier = .commonIdentifierArtwork
               artItem.value = result.image.pngData() as NSData?
