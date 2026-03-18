@@ -1,9 +1,11 @@
 import SwiftUI
+import AVFoundation
 
 struct ContentDetailView: View {
     let content: LunaContent
     @Environment(\.dismiss) private var dismiss
     @State private var showPlayer = false
+    @State private var preloadedAsset: AVURLAsset? = nil
     @State private var isInWatchlist = false
     @State private var selectedSeason = 1
     @State private var selectedNestedContent: LunaContent? = nil
@@ -67,7 +69,15 @@ struct ContentDetailView: View {
         .fullScreenCover(isPresented: $showPlayer) {
             let library = ContentStore.shared.allContent
             let playlist = library.isEmpty ? [content] : library
-            PlayerView(content: content, playlist: playlist)
+            PlayerView(content: content, playlist: playlist, preloadedAsset: preloadedAsset)
+        }
+        .task {
+            guard let pid = content.muxPlaybackID,
+                  let url = URL(string: "https://stream.mux.com/\(pid).m3u8") else { return }
+            let options = [AVURLAssetPreferPreciseDurationAndTimingKey: true] as [String: Any]
+            let asset = AVURLAsset(url: url, options: options)
+            _ = try? await asset.load(.isPlayable)
+            preloadedAsset = asset
         }
         .sheet(item: $selectedNestedContent) { item in
             ContentDetailView(content: item)

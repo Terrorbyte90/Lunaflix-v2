@@ -1,6 +1,8 @@
 import SwiftUI
 import AVKit
 import AVFoundation
+import MediaPlayer
+import Kingfisher
 
 // MARK: - Player ViewModel
 
@@ -41,14 +43,18 @@ final class PlayerViewModel: ObservableObject {
     private var timeObserver: Any?
     private var itemEndObserver: Any?
     private var demoTask: Task<Void, Never>?
+    private var preloadedAsset: AVURLAsset?
+    private var remoteCommandsRegistered = false
 
     // MARK: Init
-    init(content: LunaContent, playlist: [LunaContent] = []) {
+    init(content: LunaContent, playlist: [LunaContent] = [], preloadedAsset: AVURLAsset? = nil) {
         let list = playlist.isEmpty ? [content] : playlist
         self.playlist = list
         self.currentIndex = list.firstIndex(of: content) ?? 0
         self.player = AVQueuePlayer()
+        self.preloadedAsset = preloadedAsset
         setup()
+        setupRemoteCommands()
     }
 
     // MARK: - Setup
@@ -79,30 +85,60 @@ final class PlayerViewModel: ObservableObject {
 
     private func buildQueue(from index: Int) {
         player.removeAllItems()
-        // Queue current + next for gapless transition
         let end = min(index + 2, playlist.count)
         for i in index..<end {
-            if let item = makePlayerItem(for: playlist[i]) {
+            if let item = makePlayerItem(for: playlist[i], isFirstItem: i == index) {
                 player.insert(item, after: player.items().last)
             }
         }
         player.automaticallyWaitsToMinimizeStalling = true
     }
 
-    private func makePlayerItem(for content: LunaContent) -> AVPlayerItem? {
-        guard let pid = content.muxPlaybackID,
-              let url = URL(string: "https://stream.mux.com/\(pid).m3u8")
-        else { return nil }
+    private func makePlayerItem(for content: LunaContent, isFirstItem: Bool = false) -> AVPlayerItem? {
+        guard let pid = content.muxPlaybackID else { return nil }
 
-        let asset = AVURLAsset(url: url, options: [
-            AVURLAssetPreferPreciseDurationAndTimingKey: true
-        ])
+        let asset: AVURLAsset
+        if isFirstItem, let preloaded = preloadedAsset {
+            asset = preloaded
+        } else {
+            guard let url = URL(string: "https://stream.mux.com/\(pid).m3u8") else { return nil }
+            asset = AVURLAsset(url: url, options: [AVURLAssetPreferPreciseDurationAndTimingKey: true])
+        }
+
         let item = AVPlayerItem(asset: asset)
-        // 30s forward buffer for lag-free, seamless playback
         item.preferredForwardBufferDuration = 30
-        // Prefer higher quality variants
-        item.preferredPeakBitRate = 0         // no cap
-        item.preferredMaximumResolution = .zero // no cap
+        item.preferredPeakBitRate = 0
+
+        // Cap resolution to screen — avoids downloading 4K segments on a 390pt display
+        let screenSize = UIScreen.main.bounds.size
+        let scale = UIScreen.main.scale
+        item.preferredMaximumResolution = CGSize(
+            width: screenSize.width * scale,
+            height: screenSize.height * scale
+        )
+
+        // Set title metadata synchronously
+        let titleItem = AVMutableMetadataItem()
+        titleItem.identifier = .commonIdentifierTitle
+        titleItem.value = content.title as NSString
+        item.externalMetadata = [titleItem]
+
+        // Append artwork asynchronously from Kingfisher cache (non-blocking)
+        let capturedItem = item
+        Task.detached {
+            // Kingfisher 8.x: pass URL directly
+            guard let pid = content.muxPlaybackID,
+                  let url = URL(string: "https://image.mux.com/\(pid)/thumbnail.jpg?width=400&height=225&fit_mode=smartcrop&time=2") else { return }
+            if let result = try? await KingfisherManager.shared.retrieveImage(with: url) {
+                let artItem = AVMutableMetadataItem()
+                artItem.identifier = .commonIdentifierArtwork
+                artItem.value = result.image.pngData() as NSData?
+                await MainActor.run {
+                    capturedItem.externalMetadata += [artItem]
+                }
+            }
+        }
+
         return item
     }
 
@@ -159,6 +195,11 @@ final class PlayerViewModel: ObservableObject {
                 } else if remaining >= 15 {
                     if self.showUpNext { self.showUpNext = false }
                 }
+
+                // Update Now Playing every ~5 seconds
+                if Int(time.seconds) % 5 == 0 {
+                    self.updateNowPlaying()
+                }
             }
         }
 
@@ -204,6 +245,8 @@ final class PlayerViewModel: ObservableObject {
                 }
             }
         }
+
+        updateNowPlaying()
     }
 
     private func setupItemStatusObserver(for item: AVPlayerItem?) {
@@ -245,6 +288,8 @@ final class PlayerViewModel: ObservableObject {
             item.preferredForwardBufferDuration = 30
             player.insert(item, after: player.items().last)
         }
+
+        updateNowPlaying()
     }
 
     // MARK: - Controls (called from View)
@@ -257,6 +302,7 @@ final class PlayerViewModel: ObservableObject {
         } else {
             player.pause()
         }
+        updateNowPlaying()
     }
 
     func seek(by delta: Double) {
@@ -316,6 +362,57 @@ final class PlayerViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Now Playing
+
+    private func updateNowPlaying() {
+        var info: [String: Any] = [:]
+        info[MPMediaItemPropertyTitle] = currentContent.title
+        info[MPMediaItemPropertyPlaybackDuration] = duration
+        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = player.currentTime().seconds
+        info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+
+        // Artwork from Kingfisher memory cache (sync — no I/O)
+        if let thumbURL = URL(string: "https://image.mux.com/\(currentContent.muxPlaybackID ?? "")/thumbnail.jpg?width=400&height=225&fit_mode=smartcrop&time=2"),
+           let cached = KingfisherManager.shared.cache.retrieveImageInMemoryCache(
+               forKey: thumbURL.absoluteString) {
+            info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: cached.size) { _ in cached }
+        }
+
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+
+    // MARK: - Remote Commands
+
+    func seekToAbsoluteTime(_ seconds: Double) {
+        let time = CMTime(seconds: seconds, preferredTimescale: 600)
+        player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
+    }
+
+    private func setupRemoteCommands() {
+        guard !remoteCommandsRegistered else { return }
+        remoteCommandsRegistered = true
+        let center = MPRemoteCommandCenter.shared()
+        center.playCommand.addTarget { [weak self] _ in
+            self?.player.play(); return .success
+        }
+        center.pauseCommand.addTarget { [weak self] _ in
+            self?.player.pause(); return .success
+        }
+        center.skipForwardCommand.preferredIntervals = [10]
+        center.skipForwardCommand.addTarget { [weak self] _ in
+            self?.seek(by: 10); return .success
+        }
+        center.skipBackwardCommand.preferredIntervals = [10]
+        center.skipBackwardCommand.addTarget { [weak self] _ in
+            self?.seek(by: -10); return .success
+        }
+        center.changePlaybackPositionCommand.addTarget { [weak self] event in
+            guard let e = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
+            self?.seekToAbsoluteTime(e.positionTime)
+            return .success
+        }
+    }
+
     // MARK: - Teardown
 
     func tearDown() {
@@ -339,6 +436,12 @@ final class PlayerViewModel: ObservableObject {
         currentItemObserver = nil
         itemStatusObserver?.invalidate()
         itemStatusObserver = nil
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        let center = MPRemoteCommandCenter.shared()
+        [center.playCommand, center.pauseCommand, center.skipForwardCommand,
+         center.skipBackwardCommand, center.changePlaybackPositionCommand]
+            .forEach { $0.removeTarget(nil) }
+        remoteCommandsRegistered = false
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 }
@@ -350,6 +453,7 @@ private enum DoubleTapSide { case left, right }
 struct PlayerView: View {
     let content: LunaContent
     var playlist: [LunaContent] = []
+    var preloadedAsset: AVURLAsset? = nil
 
     @Environment(\.dismiss) private var dismiss
     @StateObject private var vm: PlayerViewModel
@@ -362,10 +466,15 @@ struct PlayerView: View {
     private let controlHideDelay: Double = 3.0
     @State private var doubleTapSide: DoubleTapSide? = nil
 
-    init(content: LunaContent, playlist: [LunaContent] = []) {
-        self.content  = content
+    init(content: LunaContent, playlist: [LunaContent] = [], preloadedAsset: AVURLAsset? = nil) {
+        self.content = content
         self.playlist = playlist
-        _vm = StateObject(wrappedValue: PlayerViewModel(content: content, playlist: playlist))
+        self.preloadedAsset = preloadedAsset
+        _vm = StateObject(wrappedValue: PlayerViewModel(
+            content: content,
+            playlist: playlist,
+            preloadedAsset: preloadedAsset
+        ))
     }
 
     var body: some View {
