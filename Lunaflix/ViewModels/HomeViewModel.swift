@@ -13,6 +13,7 @@ final class HomeViewModel {
 
     private var heroTimer: AnyCancellable?
     private var loadTask: Task<Void, Never>? = nil
+    private var imagePrefetcher: ImagePrefetcher?
 
     init() {
         load()
@@ -52,7 +53,8 @@ final class HomeViewModel {
                     guard let pid = content.muxPlaybackID else { return nil }
                     return URL(string: "https://image.mux.com/\(pid)/thumbnail.jpg?width=400&height=225&fit_mode=smartcrop&time=2")
                 }
-                ImagePrefetcher(urls: Array(visibleURLs)).start()
+                imagePrefetcher = ImagePrefetcher(urls: Array(visibleURLs))
+                imagePrefetcher?.start()
             } catch {
                 heroContents = []
                 categories = []

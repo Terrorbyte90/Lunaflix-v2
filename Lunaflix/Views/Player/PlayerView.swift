@@ -365,6 +365,11 @@ final class PlayerViewModel: ObservableObject {
     }
 
     func skipToNext() {
+        // Save resume position before advancing (skip doesn't go through tearDown)
+        if let playbackID = currentContent.muxPlaybackID {
+            let pos = player.currentTime().seconds
+            if pos > 5 { ResumeStore.shared.save(playbackID: playbackID, position: pos) }
+        }
         guard nextContent != nil else { return }
         player.advanceToNextItem()
         handleItemEnded()   // sync index + pre-queue n+2
