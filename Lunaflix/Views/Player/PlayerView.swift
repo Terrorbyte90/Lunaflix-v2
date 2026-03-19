@@ -1016,7 +1016,7 @@ struct PlayerView: View {
 
 struct AVPlayerRepresentable: UIViewControllerRepresentable {
     let player: AVQueuePlayer
-    let viewModel: PlayerViewModel
+    @ObservedObject var viewModel: PlayerViewModel
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -1031,7 +1031,8 @@ struct AVPlayerRepresentable: UIViewControllerRepresentable {
         vc.allowsPictureInPicturePlayback = true
 
         // Mux Data SDK monitoring
-        let playerData = MUXSDKCustomerPlayerData(environmentKey: "ENV_KEY_PLACEHOLDER")
+        // TODO: Replace with real Mux Data environment key from mux.com/data — analytics disabled until configured
+        let playerData = MUXSDKCustomerPlayerData(environmentKey: "")
         let videoData = MUXSDKCustomerVideoData()
         videoData.videoTitle = viewModel.currentContent.title
         videoData.videoId = viewModel.currentContent.muxPlaybackID
