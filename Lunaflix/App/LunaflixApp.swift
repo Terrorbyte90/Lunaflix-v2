@@ -1,9 +1,16 @@
 import SwiftUI
+import Kingfisher
 
 @main
 struct LunaflixApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var appState = AppState()
+
+    init() {
+        // Kingfisher disk cache: 200 MB, memory cache: 50 MB
+        KingfisherManager.shared.cache.diskStorage.config.sizeLimit = 200 * 1024 * 1024
+        KingfisherManager.shared.cache.memoryStorage.config.totalCostLimit = 50 * 1024 * 1024
+    }
 
     var body: some Scene {
         WindowGroup {

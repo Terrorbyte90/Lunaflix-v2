@@ -51,6 +51,8 @@ final class PlayerViewModel: ObservableObject {
     private var preloadedAsset: AVURLAsset?
     private var remoteCommandsRegistered = false
     private var remoteCommandTokens: [Any] = []
+    private var hasRestoredPosition = false
+    private var resumeSaveCounter = 0
 
     // MARK: Init
     init(content: LunaContent, playlist: [LunaContent] = [], preloadedAsset: AVURLAsset? = nil) {
@@ -208,6 +210,13 @@ final class PlayerViewModel: ObservableObject {
                 if Int(time.seconds) % 5 == 0 {
                     self.updateNowPlaying()
                 }
+
+                // Save resume position every ~10s (40 × 0.25s interval)
+                self.resumeSaveCounter += 1
+                if self.resumeSaveCounter % 40 == 0,
+                   let playbackID = self.currentContent.muxPlaybackID {
+                    ResumeStore.shared.save(playbackID: playbackID, position: time.seconds)
+                }
             }
         }
 
@@ -269,6 +278,17 @@ final class PlayerViewModel: ObservableObject {
                     self.isBuffering = false
                 case .readyToPlay:
                     if self.error != nil { self.error = nil }
+                    // Restore resume position (one-time per item)
+                    if !self.hasRestoredPosition,
+                       let playbackID = self.currentContent.muxPlaybackID,
+                       let savedPos = ResumeStore.shared.position(for: playbackID) {
+                        let dur = itm.duration.seconds
+                        if dur.isNaN || savedPos < dur * 0.95 {
+                            let t = CMTime(seconds: savedPos, preferredTimescale: 600)
+                            self.player.seek(to: t, toleranceBefore: .zero, toleranceAfter: .zero)
+                        }
+                        self.hasRestoredPosition = true
+                    }
                 default:
                     break
                 }
@@ -279,6 +299,7 @@ final class PlayerViewModel: ObservableObject {
     // MARK: - Item end handling
 
     private func handleItemEnded() {
+        let completedPlaybackID = currentContent.muxPlaybackID
         let next = currentIndex + 1
         guard next < playlist.count else { return }
 
@@ -287,6 +308,11 @@ final class PlayerViewModel: ObservableObject {
         progress     = 0
         duration     = 1
         showUpNext   = false
+        hasRestoredPosition = false    // reset for new item
+        resumeSaveCounter   = 0        // reset periodic save counter
+
+        // Clear resume for the completed item (watched to end = no resume needed)
+        if let pid = completedPlaybackID { ResumeStore.shared.clear(playbackID: pid) }
 
         // Notify Mux Data SDK about video change
         let newContent = playlist[next]
@@ -449,6 +475,11 @@ final class PlayerViewModel: ObservableObject {
         currentItemObserver = nil
         itemStatusObserver?.invalidate()
         itemStatusObserver = nil
+        // Save resume position on exit
+        if let playbackID = currentContent.muxPlaybackID {
+            let pos = player.currentTime().seconds
+            if pos > 5 { ResumeStore.shared.save(playbackID: playbackID, position: pos) }
+        }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         let center = MPRemoteCommandCenter.shared()
         remoteCommandTokens.forEach { token in

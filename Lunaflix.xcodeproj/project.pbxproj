@@ -37,6 +37,7 @@
 		AA000026 /* ContentStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100026 /* ContentStore.swift */; };
 		AA000027 /* DownloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100027 /* DownloadManager.swift */; };
 		AA000028 /* UploadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100028 /* UploadManager.swift */; };
+		AA000029 /* ResumeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100029 /* ResumeStore.swift */; };
 		BB000001 /* LunaAgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB100001 /* LunaAgeTests.swift */; };
 		BB000002 /* MuxAssetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB100002 /* MuxAssetTests.swift */; };
 		BB000003 /* SearchViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB100003 /* SearchViewModelTests.swift */; };
@@ -91,6 +92,7 @@
 		AA100026 /* ContentStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentStore.swift; sourceTree = "<group>"; };
 		AA100027 /* DownloadManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadManager.swift; sourceTree = "<group>"; };
 		AA100028 /* UploadManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadManager.swift; sourceTree = "<group>"; };
+		AA100029 /* ResumeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResumeStore.swift; sourceTree = "<group>"; };
 		AAPRODUCT /* Lunaflix.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lunaflix.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB100001 /* LunaAgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LunaAgeTests.swift; sourceTree = "<group>"; };
 		BB100002 /* MuxAssetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuxAssetTests.swift; sourceTree = "<group>"; };
@@ -198,6 +200,7 @@
 				AA100026 /* ContentStore.swift */,
 				AA100027 /* DownloadManager.swift */,
 				AA100028 /* UploadManager.swift */,
+				AA100029 /* ResumeStore.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -477,6 +480,7 @@
 				AA000026 /* ContentStore.swift in Sources */,
 				AA000027 /* DownloadManager.swift in Sources */,
 				AA000028 /* UploadManager.swift in Sources */,
+				AA000029 /* ResumeStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

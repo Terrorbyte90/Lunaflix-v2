@@ -1,4 +1,5 @@
 import SwiftUI
+import Kingfisher
 
 // MARK: - Color Palette
 
@@ -261,22 +262,16 @@ struct MuxThumbnailImage: View {
     var body: some View {
         Group {
             if let url = thumbnailURL {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: width, height: height)
-                            .clipped()
-                            .transition(.opacity.animation(.easeIn(duration: 0.25)))
-                    case .failure:
-                        gradientFallback
-                    default:
+                KFImage(url)
+                    .placeholder {
                         gradientFallback
                             .shimmering()
                     }
-                }
+                    .fade(duration: 0.2)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: width, height: height)
+                    .clipped()
             } else {
                 gradientFallback
             }

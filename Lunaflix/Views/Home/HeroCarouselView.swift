@@ -1,4 +1,5 @@
 import SwiftUI
+import Kingfisher
 
 struct HeroCarouselView: View {
     let contents: [LunaContent]
@@ -218,28 +219,24 @@ struct HeroCard: View {
                 let h = geo.size.height
 
                 if let url = thumbnailURL {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(width: w, height: h)
-                                .clipped()
-                                // Slight color tint so UI text stays readable
-                                .overlay(
-                                    content.heroGradient.gradient
-                                        .opacity(0.45)
-                                        .ignoresSafeArea()
-                                )
-                        default:
-                            // Gradient while loading
+                    KFImage(url)
+                        .placeholder {
                             ZStack {
                                 content.heroGradient.gradient.ignoresSafeArea()
                                 gradientDecoration(w: w, h: h)
                             }
                         }
-                    }
+                        .fade(duration: 0.2)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: w, height: h)
+                        .clipped()
+                        // Slight color tint so UI text stays readable
+                        .overlay(
+                            content.heroGradient.gradient
+                                .opacity(0.45)
+                                .ignoresSafeArea()
+                        )
                 } else {
                     ZStack {
                         content.heroGradient.gradient.ignoresSafeArea()

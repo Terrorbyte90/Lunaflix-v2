@@ -1,13 +1,15 @@
 import SwiftUI
 import Combine
+import Kingfisher
 
+@Observable
 @MainActor
-final class HomeViewModel: ObservableObject {
-    @Published var heroContents: [LunaContent] = []
-    @Published var categories: [ContentCategory] = []
-    @Published var currentHeroIndex: Int = 0
-    @Published var isLoading: Bool = true
-    @Published var isConfigured: Bool = false
+final class HomeViewModel {
+    var heroContents: [LunaContent] = []
+    var categories: [ContentCategory] = []
+    var currentHeroIndex: Int = 0
+    var isLoading: Bool = true
+    var isConfigured: Bool = false
 
     private var heroTimer: AnyCancellable?
     private var loadTask: Task<Void, Never>? = nil
@@ -44,6 +46,13 @@ final class HomeViewModel: ObservableObject {
                 heroContents = Array(contents.prefix(5))
                 categories = buildCategories(from: contents)
                 ContentStore.shared.update(contents)
+
+                // Prefetch first 50 thumbnails (hero + first visible rows)
+                let visibleURLs = contents.prefix(50).compactMap { content -> URL? in
+                    guard let pid = content.muxPlaybackID else { return nil }
+                    return URL(string: "https://image.mux.com/\(pid)/thumbnail.jpg?width=400&height=225&fit_mode=smartcrop&time=2")
+                }
+                ImagePrefetcher(urls: Array(visibleURLs)).start()
             } catch {
                 heroContents = []
                 categories = []

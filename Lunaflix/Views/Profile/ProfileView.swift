@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ProfileView: View {
-    @StateObject private var vm = ProfileViewModel()
+    @State private var vm = ProfileViewModel()
     @ObservedObject private var dm = DownloadManager.shared
     @State private var selectedContent: LunaContent? = nil
     @State private var showStreamingPicker = false
@@ -10,6 +10,7 @@ struct ProfileView: View {
     @State private var showHelp = false
 
     var body: some View {
+        @Bindable var vm = vm
         ZStack {
             Color.lunaBackground.ignoresSafeArea()
 

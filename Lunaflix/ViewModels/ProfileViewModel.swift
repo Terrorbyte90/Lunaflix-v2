@@ -1,19 +1,20 @@
 import SwiftUI
 
+@Observable
 @MainActor
-final class ProfileViewModel: ObservableObject {
-    @Published var user: User
+final class ProfileViewModel {
+    var user: User
 
-    @Published var notificationsEnabled: Bool {
+    var notificationsEnabled: Bool {
         didSet { UserDefaults.standard.set(notificationsEnabled, forKey: "lunaflix.notificationsEnabled") }
     }
-    @Published var autoplayEnabled: Bool {
+    var autoplayEnabled: Bool {
         didSet { UserDefaults.standard.set(autoplayEnabled, forKey: "lunaflix.autoplayEnabled") }
     }
-    @Published var downloadQuality: DownloadQuality {
+    var downloadQuality: DownloadQuality {
         didSet { UserDefaults.standard.set(downloadQuality.rawValue, forKey: "lunaflix.downloadQuality") }
     }
-    @Published var streamingQuality: StreamingQuality {
+    var streamingQuality: StreamingQuality {
         didSet { UserDefaults.standard.set(streamingQuality.rawValue, forKey: "lunaflix.streamingQuality") }
     }
 

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct HomeView: View {
-    @StateObject private var vm = HomeViewModel()
+    @State private var vm = HomeViewModel()
     @EnvironmentObject var appState: AppState
     @State private var selectedContent: LunaContent? = nil
     @State private var scrollOffset: CGFloat = 0
@@ -18,6 +18,7 @@ struct HomeView: View {
     }
 
     var body: some View {
+        @Bindable var vm = vm
         ZStack(alignment: .top) {
             Color.lunaBackground.ignoresSafeArea()
 
