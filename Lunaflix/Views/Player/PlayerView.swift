@@ -3,6 +3,11 @@ import AVKit
 import AVFoundation
 import MediaPlayer
 import Kingfisher
+import MUXSDKStats
+
+extension Notification.Name {
+    static let lunaflixVideoChanged = Notification.Name("lunaflixVideoChanged")
+}
 
 // MARK: - Player ViewModel
 
@@ -282,6 +287,10 @@ final class PlayerViewModel: ObservableObject {
         progress     = 0
         duration     = 1
         showUpNext   = false
+
+        // Notify Mux Data SDK about video change
+        let newContent = playlist[next]
+        NotificationCenter.default.post(name: .lunaflixVideoChanged, object: newContent)
 
         // Pre-queue the item after next (n+2) so the queue always has 2 items
         let afterNext = next + 1
@@ -633,7 +642,7 @@ struct PlayerView: View {
                 }
             }
         } else {
-            AVPlayerRepresentable(player: vm.player)
+            AVPlayerRepresentable(player: vm.player, viewModel: vm)
                 .ignoresSafeArea()
 
             // Loading overlay until first frame arrives
@@ -1007,6 +1016,11 @@ struct PlayerView: View {
 
 struct AVPlayerRepresentable: UIViewControllerRepresentable {
     let player: AVQueuePlayer
+    let viewModel: PlayerViewModel
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
 
     func makeUIViewController(context: Context) -> AVPlayerViewController {
         let vc = AVPlayerViewController()
@@ -1014,13 +1028,67 @@ struct AVPlayerRepresentable: UIViewControllerRepresentable {
         vc.showsPlaybackControls = false
         vc.videoGravity = .resizeAspect
         vc.view.backgroundColor = .black
-        // Allow subtitles / captions from HLS stream
         vc.allowsPictureInPicturePlayback = true
+
+        // Mux Data SDK monitoring
+        let playerData = MUXSDKCustomerPlayerData(environmentKey: "ENV_KEY_PLACEHOLDER")
+        let videoData = MUXSDKCustomerVideoData()
+        videoData.videoTitle = viewModel.currentContent.title
+        videoData.videoId = viewModel.currentContent.muxPlaybackID
+        if let customerData = MUXSDKCustomerData(
+            customerPlayerData: playerData,
+            videoData: videoData,
+            viewData: nil
+        ) {
+            MUXSDKStats.monitorAVPlayerViewController(
+                vc, withPlayerName: "mainPlayer", customerData: customerData
+            )
+        }
+
+        context.coordinator.startObserving()
         return vc
     }
 
     func updateUIViewController(_ vc: AVPlayerViewController, context: Context) {
         if vc.player !== player { vc.player = player }
+    }
+
+    static func dismantleUIViewController(_ vc: AVPlayerViewController, coordinator: Coordinator) {
+        MUXSDKStats.destroyPlayer("mainPlayer")
+        coordinator.stopObserving()
+    }
+
+    // MARK: - Coordinator
+
+    final class Coordinator {
+        private var token: NSObjectProtocol?
+
+        func startObserving() {
+            token = NotificationCenter.default.addObserver(
+                forName: .lunaflixVideoChanged,
+                object: nil,
+                queue: .main
+            ) { [weak self] note in
+                guard let content = note.object as? LunaContent else { return }
+                let videoData = MUXSDKCustomerVideoData()
+                videoData.videoTitle = content.title
+                videoData.videoId = content.muxPlaybackID
+                if let customerData = MUXSDKCustomerData(
+                    customerPlayerData: nil,
+                    videoData: videoData,
+                    viewData: nil
+                ) {
+                    MUXSDKStats.videoChange(forPlayer: "mainPlayer", with: customerData)
+                }
+            }
+        }
+
+        func stopObserving() {
+            if let t = token { NotificationCenter.default.removeObserver(t) }
+            token = nil
+        }
+
+        deinit { stopObserving() }
     }
 }
 
