@@ -45,6 +45,7 @@ final class PlayerViewModel: ObservableObject {
     private var demoTask: Task<Void, Never>?
     private var preloadedAsset: AVURLAsset?
     private var remoteCommandsRegistered = false
+    private var remoteCommandTokens: [Any] = []
 
     // MARK: Init
     init(content: LunaContent, playlist: [LunaContent] = [], preloadedAsset: AVURLAsset? = nil) {
@@ -70,6 +71,7 @@ final class PlayerViewModel: ObservableObject {
         buildQueue(from: currentIndex)
         attachObservers()
         player.play()
+        updateNowPlaying()  // after play, so isPlaying is accurate
     }
 
     private func configureAudioSession() {
@@ -110,11 +112,12 @@ final class PlayerViewModel: ObservableObject {
         item.preferredPeakBitRate = 0
 
         // Cap resolution to screen — avoids downloading 4K segments on a 390pt display
-        let screenSize = UIScreen.main.bounds.size
-        let scale = UIScreen.main.scale
+        let nativeBounds = (UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first?.screen ?? UIScreen.main).nativeBounds
         item.preferredMaximumResolution = CGSize(
-            width: screenSize.width * scale,
-            height: screenSize.height * scale
+            width: nativeBounds.width,
+            height: nativeBounds.height
         )
 
         // Set title metadata synchronously
@@ -246,7 +249,6 @@ final class PlayerViewModel: ObservableObject {
             }
         }
 
-        updateNowPlaying()
     }
 
     private func setupItemStatusObserver(for item: AVPlayerItem?) {
@@ -392,25 +394,27 @@ final class PlayerViewModel: ObservableObject {
         guard !remoteCommandsRegistered else { return }
         remoteCommandsRegistered = true
         let center = MPRemoteCommandCenter.shared()
-        center.playCommand.addTarget { [weak self] _ in
-            self?.player.play(); return .success
-        }
-        center.pauseCommand.addTarget { [weak self] _ in
-            self?.player.pause(); return .success
-        }
+        remoteCommandTokens = [
+            center.playCommand.addTarget { [weak self] _ in
+                self?.player.play(); return .success
+            },
+            center.pauseCommand.addTarget { [weak self] _ in
+                self?.player.pause(); return .success
+            },
+            center.skipForwardCommand.addTarget { [weak self] _ in
+                self?.seek(by: 10); return .success
+            },
+            center.skipBackwardCommand.addTarget { [weak self] _ in
+                self?.seek(by: -10); return .success
+            },
+            center.changePlaybackPositionCommand.addTarget { [weak self] event in
+                guard let e = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
+                self?.seekToAbsoluteTime(e.positionTime)
+                return .success
+            }
+        ]
         center.skipForwardCommand.preferredIntervals = [10]
-        center.skipForwardCommand.addTarget { [weak self] _ in
-            self?.seek(by: 10); return .success
-        }
         center.skipBackwardCommand.preferredIntervals = [10]
-        center.skipBackwardCommand.addTarget { [weak self] _ in
-            self?.seek(by: -10); return .success
-        }
-        center.changePlaybackPositionCommand.addTarget { [weak self] event in
-            guard let e = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
-            self?.seekToAbsoluteTime(e.positionTime)
-            return .success
-        }
     }
 
     // MARK: - Teardown
@@ -438,9 +442,14 @@ final class PlayerViewModel: ObservableObject {
         itemStatusObserver = nil
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         let center = MPRemoteCommandCenter.shared()
-        [center.playCommand, center.pauseCommand, center.skipForwardCommand,
-         center.skipBackwardCommand, center.changePlaybackPositionCommand]
-            .forEach { $0.removeTarget(nil) }
+        remoteCommandTokens.forEach { token in
+            center.playCommand.removeTarget(token)
+            center.pauseCommand.removeTarget(token)
+            center.skipForwardCommand.removeTarget(token)
+            center.skipBackwardCommand.removeTarget(token)
+            center.changePlaybackPositionCommand.removeTarget(token)
+        }
+        remoteCommandTokens = []
         remoteCommandsRegistered = false
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
