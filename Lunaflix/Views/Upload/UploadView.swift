@@ -22,6 +22,11 @@ struct UploadView: View {
                             pickerButton
                                 .padding(.horizontal, 16)
 
+                            if um.hasJobs {
+                                summaryCard
+                                    .padding(.horizontal, 16)
+                            }
+
                             if um.jobs.isEmpty {
                                 emptyHint
                             } else {
@@ -32,7 +37,7 @@ struct UploadView: View {
                     }
                 }
             }
-            .navigationTitle("Ladda upp")
+            .navigationTitle("Uppladdningscenter")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -87,6 +92,37 @@ struct UploadView: View {
         .buttonStyle(LunaPressStyle(scale: 0.97))
     }
 
+    private var summaryCard: some View {
+        HStack(spacing: 10) {
+            statusPill("Aktiva", value: "\(um.activeCount)", color: .lunaAccentLight)
+            statusPill("Klara", value: "\(um.completedCount)", color: Color(hex: "10B981"))
+            statusPill("Fel", value: "\(um.failedCount)", color: .red)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func statusPill(_ title: String, value: String, color: Color) -> some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(color)
+                .frame(width: 7, height: 7)
+            Text(title)
+                .font(LunaFont.caption())
+                .foregroundColor(.lunaTextMuted)
+            Text(value)
+                .font(LunaFont.mono(12))
+                .foregroundColor(color)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color.lunaCard)
+        .cornerRadius(999)
+        .overlay(
+            Capsule()
+                .stroke(Color.white.opacity(0.07), lineWidth: 1)
+        )
+    }
+
     // MARK: - Jobs List
 
     private var jobsList: some View {
@@ -118,6 +154,10 @@ struct UploadView: View {
                 .foregroundColor(.lunaTextMuted)
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
+            Text("Du kan lägga till fler klipp även medan andra laddas upp.")
+                .font(LunaFont.caption())
+                .foregroundColor(.lunaTextSecondary)
+                .multilineTextAlignment(.center)
         }
     }
 

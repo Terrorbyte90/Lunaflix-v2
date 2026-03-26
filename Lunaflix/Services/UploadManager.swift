@@ -2,6 +2,10 @@ import Foundation
 import PhotosUI
 import SwiftUI
 
+extension Notification.Name {
+    static let lunaflixUploadDidComplete = Notification.Name("lunaflixUploadDidComplete")
+}
+
 // MARK: - Upload Job Phase
 
 enum UploadJobPhase: Equatable {
@@ -79,12 +83,30 @@ final class UploadManager: ObservableObject {
 
     var hasJobs: Bool { !jobs.isEmpty }
     var activeCount: Int { jobs.filter { $0.phase.isActive }.count }
+    var completedCount: Int {
+        jobs.filter {
+            if case .done = $0.phase { return true }
+            return false
+        }.count
+    }
+    var failedCount: Int {
+        jobs.filter {
+            if case .failed = $0.phase { return true }
+            return false
+        }.count
+    }
 
     func enqueue(items: [PhotosPickerItem]) {
+        guard !items.isEmpty else { return }
         let startIndex = jobs.count + 1
+        let hasCredentials = KeychainService.hasMuxCredentials
         for (i, item) in items.enumerated() {
             let job = UploadJob(index: startIndex + i)
+            if !hasCredentials {
+                job.phase = .failed(MuxError.missingCredentials.localizedDescription)
+            }
             jobs.append(job)
+            guard hasCredentials else { continue }
             Task { await run(job: job, pickerItem: item) }
         }
     }
@@ -121,8 +143,10 @@ final class UploadManager: ObservableObject {
             job.recordingDate = await VideoMetadata.extractCreationDate(from: movie.url)
 
             // 3. Create Mux direct upload with recording date in passthrough
+            let inferredTitle = movie.url.deletingPathExtension().lastPathComponent
+            let title = inferredTitle.isEmpty ? nil : inferredTitle
             let upload = try await MuxService.shared.createDirectUpload(
-                title: nil,
+                title: title,
                 recordingDate: job.recordingDate
             )
 
@@ -155,6 +179,7 @@ final class UploadManager: ObservableObject {
 
             let asset = try await MuxService.shared.pollAsset(id: aid)
             job.phase = .done(asset)
+            NotificationCenter.default.post(name: .lunaflixUploadDidComplete, object: aid)
 
         } catch {
             job.phase = .failed(error.localizedDescription)
@@ -164,20 +189,8 @@ final class UploadManager: ObservableObject {
     private func pollUploadForAssetID(uploadID: String, maxAttempts: Int = 20) async throws -> String? {
         for _ in 0..<maxAttempts {
             try await Task.sleep(for: .seconds(2))
-            if let id = try await fetchUploadAssetID(uploadID) { return id }
+            if let id = try await MuxService.shared.fetchUploadAssetID(uploadID: uploadID) { return id }
         }
         return nil
-    }
-
-    private func fetchUploadAssetID(_ uploadID: String) async throws -> String? {
-        let tid = KeychainService.muxTokenID
-        let tsc = KeychainService.muxTokenSecret
-        let url = URL(string: "https://api.mux.com/video/v1/uploads/\(uploadID)")!
-        var req = URLRequest(url: url)
-        req.httpMethod = "GET"
-        req.setValue("Basic \(Data("\(tid):\(tsc)".utf8).base64EncodedString())",
-                     forHTTPHeaderField: "Authorization")
-        let (data, _) = try await URLSession.shared.data(for: req)
-        return try JSONDecoder().decode(MuxUploadResponse.self, from: data).data.assetID
     }
 }

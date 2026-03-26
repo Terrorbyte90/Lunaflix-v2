@@ -7,6 +7,7 @@ struct ProfileView: View {
     @State private var showStreamingPicker = false
     @State private var showDownloadPicker = false
     @State private var showMuxSettings = false
+    @State private var showUploadCenter = false
     @State private var showHelp = false
 
     var body: some View {
@@ -40,7 +41,15 @@ struct ProfileView: View {
             ContentDetailView(content: content)
         }
         .sheet(isPresented: $showMuxSettings) {
-            MuxSettingsView()
+            MuxSettingsView {
+                showMuxSettings = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    showUploadCenter = true
+                }
+            }
+        }
+        .sheet(isPresented: $showUploadCenter) {
+            UploadView()
         }
         .sheet(isPresented: $showHelp) {
             HelpView()
@@ -253,6 +262,13 @@ struct ProfileView: View {
                 }
                 settingsDivider
                 settingsRow {
+                    Button { showUploadCenter = true } label: {
+                        settingsNavRow("Uppladdningar", icon: "arrow.up.circle.fill", color: .lunaAccentLight, value: nil)
+                    }
+                    .buttonStyle(LunaPressStyle(scale: 0.99))
+                }
+                settingsDivider
+                settingsRow {
                     Button { showMuxSettings = true } label: {
                         settingsNavRow(
                             "Mux-inställningar",
@@ -359,7 +375,7 @@ struct HelpView: View {
 
     private let features: [(icon: String, title: String, body: String)] = [
         ("play.circle.fill",   "Titta på Lunas klipp",    "Bläddra och spela upp alla videor direkt i appen via Mux-streamingtjänsten."),
-        ("arrow.up.circle.fill", "Ladda upp nya klipp",   "Tryck på uppladdningsknappen (↑) på hemskärmen. Välj en video från foton, ange eventuell titel och tryck Starta."),
+        ("arrow.up.circle.fill", "Ladda upp nya klipp",   "Öppna Uppladdningscenter från Hem eller Profil. Där kan du välja många videor samtidigt och lägga till fler medan uppladdningar redan pågår."),
         ("calendar",           "Automatiskt inspelningsdatum", "Appen läser inspelningsdatumet direkt ur videofilen och räknar automatiskt ut hur gammal Luna var vid inspelningstillfället."),
         ("magnifyingglass",    "Sök",                     "Sök på titel eller Lunas ålder i sökfliken."),
         ("arrow.down.circle.fill", "Nedladdningar",       "Ladda ner klipp för att titta offline. Tryck på nedladdningsikonen på videokortet."),

@@ -7,6 +7,7 @@ enum KeychainService {
     enum Key: String {
         case muxTokenID     = "mux_token_id"
         case muxTokenSecret = "mux_token_secret"
+        case muxDataEnvironmentKey = "mux_data_environment_key"
     }
 
     // MARK: - Save
@@ -18,6 +19,7 @@ enum KeychainService {
             kSecClass:       kSecClassGenericPassword,
             kSecAttrService: service,
             kSecAttrAccount: key.rawValue,
+            kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
             kSecValueData:   data
         ]
         SecItemDelete(query as CFDictionary)
@@ -51,7 +53,8 @@ enum KeychainService {
             kSecAttrService: service,
             kSecAttrAccount: key.rawValue
         ]
-        return SecItemDelete(query as CFDictionary) == errSecSuccess
+        let status = SecItemDelete(query as CFDictionary)
+        return status == errSecSuccess || status == errSecItemNotFound
     }
 
     // MARK: - Mux helpers
@@ -66,12 +69,37 @@ enum KeychainService {
         set { save(newValue, for: .muxTokenSecret) }
     }
 
+    static var muxDataEnvironmentKey: String {
+        get { load(.muxDataEnvironmentKey) ?? "" }
+        set { save(newValue, for: .muxDataEnvironmentKey) }
+    }
+
     static var hasMuxCredentials: Bool {
         !muxTokenID.isEmpty && !muxTokenSecret.isEmpty
+    }
+
+    @discardableResult
+    static func saveMuxConfiguration(
+        tokenID: String,
+        tokenSecret: String,
+        dataEnvironmentKey: String?
+    ) -> Bool {
+        let tid = tokenID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let tsc = tokenSecret.trimmingCharacters(in: .whitespacesAndNewlines)
+        let env = (dataEnvironmentKey ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let didSaveID = save(tid, for: .muxTokenID)
+        let didSaveSecret = save(tsc, for: .muxTokenSecret)
+        let didSaveEnv = env.isEmpty
+            ? delete(.muxDataEnvironmentKey)
+            : save(env, for: .muxDataEnvironmentKey)
+
+        return didSaveID && didSaveSecret && didSaveEnv
     }
 
     static func clearMuxCredentials() {
         delete(.muxTokenID)
         delete(.muxTokenSecret)
+        delete(.muxDataEnvironmentKey)
     }
 }

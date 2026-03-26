@@ -139,11 +139,12 @@ final class PlayerViewModel: ObservableObject {
             // Kingfisher 8.x: pass URL directly
             guard let pid = content.muxPlaybackID,
                   let url = URL(string: "https://image.mux.com/\(pid)/thumbnail.jpg?width=400&height=225&fit_mode=smartcrop&time=2") else { return }
-            if let result = try? await KingfisherManager.shared.retrieveImage(with: url) {
-                let artItem = AVMutableMetadataItem()
-                artItem.identifier = .commonIdentifierArtwork
-                artItem.value = result.image.pngData() as NSData?
+            if let result = try? await KingfisherManager.shared.retrieveImage(with: url),
+               let pngData = result.image.pngData() {
                 await MainActor.run {
+                    let artItem = AVMutableMetadataItem()
+                    artItem.identifier = .commonIdentifierArtwork
+                    artItem.value = pngData as NSData
                     capturedItem.externalMetadata += [artItem]
                 }
             }
@@ -1066,20 +1067,23 @@ struct AVPlayerRepresentable: UIViewControllerRepresentable {
         vc.view.backgroundColor = .black
         vc.allowsPictureInPicturePlayback = true
 
-        // Mux Data SDK monitoring
-        // TODO: Replace with real Mux Data environment key from mux.com/data — analytics disabled until configured
-        let playerData = MUXSDKCustomerPlayerData(environmentKey: "")
-        let videoData = MUXSDKCustomerVideoData()
-        videoData.videoTitle = viewModel.currentContent.title
-        videoData.videoId = viewModel.currentContent.muxPlaybackID
-        if let customerData = MUXSDKCustomerData(
-            customerPlayerData: playerData,
-            videoData: videoData,
-            viewData: nil
-        ) {
-            MUXSDKStats.monitorAVPlayerViewController(
-                vc, withPlayerName: "mainPlayer", customerData: customerData
-            )
+        // Mux Data SDK monitoring (enabled only when environment key is configured)
+        let environmentKey = KeychainService.muxDataEnvironmentKey
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if !environmentKey.isEmpty {
+            let playerData = MUXSDKCustomerPlayerData(environmentKey: environmentKey)
+            let videoData = MUXSDKCustomerVideoData()
+            videoData.videoTitle = viewModel.currentContent.title
+            videoData.videoId = viewModel.currentContent.muxPlaybackID
+            if let customerData = MUXSDKCustomerData(
+                customerPlayerData: playerData,
+                videoData: videoData,
+                viewData: nil
+            ) {
+                MUXSDKStats.monitorAVPlayerViewController(
+                    vc, withPlayerName: "mainPlayer", customerData: customerData
+                )
+            }
         }
 
         context.coordinator.startObserving()

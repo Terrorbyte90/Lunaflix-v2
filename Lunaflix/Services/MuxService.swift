@@ -191,6 +191,15 @@ actor MuxService {
         throw MuxError.assetPollingTimeout
     }
 
+    // MARK: - Upload Status
+
+    func fetchUploadAssetID(uploadID: String) async throws -> String? {
+        let req = try authorizedRequest(path: "/video/v1/uploads/\(uploadID)")
+        let (data, response) = try await session.data(for: req)
+        try validate(response)
+        return try JSONDecoder().decode(MuxUploadResponse.self, from: data).data.assetID
+    }
+
     // MARK: - Update Asset (patch title/passthrough)
 
     func updateAssetPassthrough(id: String, title: String, recordingDate: Date?) async throws {

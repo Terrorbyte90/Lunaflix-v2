@@ -172,21 +172,11 @@ final class MuxViewModel: ObservableObject {
     private func pollUploadForAssetID(uploadID: String, maxAttempts: Int = 20) async throws -> String? {
         for _ in 0..<maxAttempts {
             try await Task.sleep(for: .seconds(2))
-            if let assetID = try await fetchUploadAssetID(uploadID) { return assetID }
+            if let assetID = try await MuxService.shared.fetchUploadAssetID(uploadID: uploadID) {
+                return assetID
+            }
         }
         return nil
-    }
-
-    private func fetchUploadAssetID(_ uploadID: String) async throws -> String? {
-        let tid = KeychainService.muxTokenID
-        let tsc = KeychainService.muxTokenSecret
-        let url = URL(string: "https://api.mux.com/video/v1/uploads/\(uploadID)")!
-        var req = URLRequest(url: url)
-        req.httpMethod = "GET"
-        req.setValue("Basic \(Data("\(tid):\(tsc)".utf8).base64EncodedString())",
-                     forHTTPHeaderField: "Authorization")
-        let (data, _) = try await URLSession.shared.data(for: req)
-        return try JSONDecoder().decode(MuxUploadResponse.self, from: data).data.assetID
     }
 }
 

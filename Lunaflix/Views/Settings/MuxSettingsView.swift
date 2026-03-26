@@ -1,8 +1,13 @@
 import SwiftUI
 
 struct MuxSettingsView: View {
+    let onOpenUpload: (() -> Void)?
     @Environment(\.dismiss) private var dismiss
     @StateObject private var vm = MuxSettingsViewModel()
+
+    init(onOpenUpload: (() -> Void)? = nil) {
+        self.onOpenUpload = onOpenUpload
+    }
 
     var body: some View {
         NavigationStack {
@@ -18,10 +23,10 @@ struct MuxSettingsView: View {
                         // Credentials card
                         credentialsCard
 
-                        // Connection status
-                        if vm.connectionStatus != .idle {
-                            statusCard
-                        }
+                // Connection status
+                if vm.connectionStatus != .idle {
+                    statusCard
+                }
 
                         // Connected — show library stats
                         if case .connected = vm.connectionStatus {
@@ -48,7 +53,7 @@ struct MuxSettingsView: View {
                 }
             }
         }
-        .onAppear { vm.loadSavedCredentials() }
+            .onAppear { vm.loadSavedCredentials() }
         .preferredColorScheme(.dark)
     }
 
@@ -119,6 +124,31 @@ struct MuxSettingsView: View {
                         text: $vm.tokenSecret,
                         isSecure: true
                     )
+                }
+
+                Rectangle()
+                    .fill(Color.white.opacity(0.05))
+                    .frame(height: 1)
+
+                // Mux Data environment key (optional)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Data Environment Key (valfritt)")
+                        .font(LunaFont.caption())
+                        .foregroundColor(.lunaTextSecondary)
+                    TextField("För player-analytics, t.ex. env_...", text: $vm.dataEnvironmentKey)
+                        .font(LunaFont.mono(14))
+                        .foregroundColor(.lunaTextPrimary)
+                        .tint(.lunaAccentLight)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(Color.lunaElevated)
+                        .cornerRadius(10)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                        )
                 }
             }
 
@@ -239,7 +269,10 @@ struct MuxSettingsView: View {
 
             HStack(spacing: 10) {
                 quickLinkButton("Ladda upp video", icon: "arrow.up.circle.fill") {
-                    // Handled by ContentView FAB / upload sheet
+                    dismiss()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                        onOpenUpload?()
+                    }
                 }
                 quickLinkButton("Mux Dashboard", icon: "safari.fill") {
                     if let url = URL(string: "https://dashboard.mux.com") {
@@ -345,6 +378,7 @@ private struct SecureInputField: View {
 final class MuxSettingsViewModel: ObservableObject {
     @Published var tokenID = ""
     @Published var tokenSecret = ""
+    @Published var dataEnvironmentKey = ""
     @Published var isTesting = false
     @Published var connectionStatus: ConnectionStatus = .idle
 
@@ -371,6 +405,7 @@ final class MuxSettingsViewModel: ObservableObject {
     func loadSavedCredentials() {
         tokenID = KeychainService.muxTokenID
         tokenSecret = KeychainService.muxTokenSecret
+        dataEnvironmentKey = KeychainService.muxDataEnvironmentKey
         if KeychainService.hasMuxCredentials {
             Task { await testCurrentCredentials() }
         }
@@ -379,13 +414,27 @@ final class MuxSettingsViewModel: ObservableObject {
     func saveAndTest() async {
         isTesting = true
         connectionStatus = .testing
+        let trimmedID = tokenID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedSecret = tokenSecret.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedDataEnv = dataEnvironmentKey.trimmingCharacters(in: .whitespacesAndNewlines)
 
         do {
-            try await MuxService.shared.testConnection(tokenID: tokenID, tokenSecret: tokenSecret)
+            try await MuxService.shared.testConnection(tokenID: trimmedID, tokenSecret: trimmedSecret)
 
             // Save to keychain on success
-            KeychainService.muxTokenID = tokenID
-            KeychainService.muxTokenSecret = tokenSecret
+            let didSave = KeychainService.saveMuxConfiguration(
+                tokenID: trimmedID,
+                tokenSecret: trimmedSecret,
+                dataEnvironmentKey: trimmedDataEnv
+            )
+            guard didSave else {
+                connectionStatus = .failed("Kunde inte spara Mux-nycklar i nyckelringen.")
+                isTesting = false
+                return
+            }
+            tokenID = trimmedID
+            tokenSecret = trimmedSecret
+            dataEnvironmentKey = trimmedDataEnv
 
             // Get asset count
             let assets = try await MuxService.shared.listAssets()
@@ -401,6 +450,7 @@ final class MuxSettingsViewModel: ObservableObject {
         KeychainService.clearMuxCredentials()
         tokenID = ""
         tokenSecret = ""
+        dataEnvironmentKey = ""
         connectionStatus = .idle
     }
 

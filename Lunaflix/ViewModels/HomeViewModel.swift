@@ -12,12 +12,15 @@ final class HomeViewModel {
     var isConfigured: Bool = false
 
     private var heroTimer: AnyCancellable?
+    private var uploadRefreshObserver: AnyCancellable?
     private var loadTask: Task<Void, Never>? = nil
+    private var refreshTask: Task<Void, Never>? = nil
     private var imagePrefetcher: ImagePrefetcher?
 
     init() {
         load()
         startHeroTimer()
+        observeUploadCompletions()
     }
 
     private func load() {
@@ -67,10 +70,20 @@ final class HomeViewModel {
     // Called after an upload completes so the new asset appears immediately
     func refreshAfterUpload() {
         // Short delay lets Mux finish the final processing step
-        Task {
+        refreshTask?.cancel()
+        refreshTask = Task {
             try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
             load()
         }
+    }
+
+    private func observeUploadCompletions() {
+        uploadRefreshObserver = NotificationCenter.default
+            .publisher(for: .lunaflixUploadDidComplete)
+            .sink { [weak self] _ in
+                self?.refreshAfterUpload()
+            }
     }
 
     private func buildCategories(from contents: [LunaContent]) -> [ContentCategory] {
@@ -156,4 +169,5 @@ final class HomeViewModel {
     func refresh() {
         load()
     }
+
 }
