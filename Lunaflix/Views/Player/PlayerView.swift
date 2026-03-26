@@ -1109,7 +1109,7 @@ struct AVPlayerRepresentable: UIViewControllerRepresentable {
                 forName: .lunaflixVideoChanged,
                 object: nil,
                 queue: .main
-            ) { [weak self] note in
+            ) { note in
                 guard let content = note.object as? LunaContent else { return }
                 let videoData = MUXSDKCustomerVideoData()
                 videoData.videoTitle = content.title
