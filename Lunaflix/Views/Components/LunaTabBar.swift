@@ -48,11 +48,13 @@ struct LunaTabBar: View {
     private func badgeCount(for tab: Tab) -> Int {
         switch tab {
         case .home:
-            // Show active upload count on home tab so user knows something is processing
-            return um.activeCount
+            // No badge on home
+            return 0
         case .downloads:
-            // Active downloads badge
-            return dm.downloads.filter { !$0.isReady && $0.errorMessage == nil }.count
+            // Show active downloads + uploads count
+            let downloadCount = dm.downloads.filter { !$0.isReady && $0.errorMessage == nil }.count
+            let uploadCount = um.activeCount
+            return downloadCount + uploadCount
         default:
             return 0
         }
