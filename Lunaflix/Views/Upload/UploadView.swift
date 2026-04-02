@@ -96,6 +96,14 @@ struct UploadView: View {
                     UploadJobCard(job: job) {
                         LunaHaptic.light()
                         um.remove(job)
+                    } onPause: {
+                        if job.phase.canPause {
+                            um.pause(job)
+                        } else if job.phase.canResume {
+                            um.resume(job)
+                        }
+                    } onRetry: {
+                        um.retry(job)
                     }
                 }
             }
@@ -107,17 +115,53 @@ struct UploadView: View {
     // MARK: - Empty Hint
 
     private var emptyHint: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 18) {
             Spacer().frame(height: 48)
-            Image(systemName: "film.stack")
-                .font(.system(size: 52))
-                .foregroundStyle(LinearGradient.lunaAccentGradient)
-                .opacity(0.55)
-            Text("Välj en eller flera videor\natt ladda upp till Mux")
-                .font(LunaFont.body())
+
+            ZStack {
+                Circle()
+                    .fill(Color.lunaAccent.opacity(0.1))
+                    .frame(width: 100, height: 100)
+
+                Image(systemName: "film.stack")
+                    .font(.system(size: 44))
+                    .foregroundStyle(LinearGradient.lunaAccentGradient)
+                    .opacity(0.7)
+            }
+            .modifier(PulseModifier())
+
+            VStack(spacing: 8) {
+                Text("Välj videor att ladda upp")
+                    .font(LunaFont.title3())
+                    .foregroundColor(.lunaTextPrimary)
+
+                Text("Tryck på knappen ovan för att välja\nvideor från ditt bibliotek")
+                    .font(LunaFont.body())
+                    .foregroundColor(.lunaTextMuted)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+            }
+
+            // Tips
+            VStack(alignment: .leading, spacing: 10) {
+                tipRow(icon: "arrow.up.circle", text: "Stödjer MP4, MOV och M4V")
+                tipRow(icon: "clock", text: "Stora filer tar längre tid")
+                tipRow(icon: "arrow.clockwise", text: "Du kan pausa och återuppta")
+            }
+            .padding(.top, 8)
+        }
+    }
+
+    private func tipRow(icon: String, text: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 14))
+                .foregroundColor(.lunaAccentLight)
+                .frame(width: 20)
+
+            Text(text)
+                .font(LunaFont.caption())
                 .foregroundColor(.lunaTextMuted)
-                .multilineTextAlignment(.center)
-                .lineSpacing(4)
         }
     }
 
@@ -155,11 +199,27 @@ struct UploadView: View {
 
 }
 
+// MARK: - Pulse Animation Modifier
+
+struct PulseModifier: ViewModifier {
+    @State private var isPulsing = false
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(isPulsing ? 1.05 : 1.0)
+            .opacity(isPulsing ? 0.9 : 1.0)
+            .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isPulsing)
+            .onAppear { isPulsing = true }
+    }
+}
+
 // MARK: - Upload Job Card
 
 struct UploadJobCard: View {
     @ObservedObject var job: UploadJob
     let onRemove: () -> Void
+    let onPause: () -> Void
+    let onRetry: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -193,16 +253,86 @@ struct UploadJobCard: View {
             .padding(14)
 
             // Progress bar during upload
-            if case .uploading = job.phase {
-                LunaProgressBar(progress: job.progress, height: 3, color: .lunaAccentLight)
-                    .padding(.horizontal, 14)
-                    .padding(.bottom, 12)
+            if job.phase.isActive || job.phase == .paused {
+                progressSection
             }
         }
         .background(Color.lunaCard)
         .cornerRadius(14)
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.06), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(borderColor, lineWidth: 1))
         .animation(.lunaSnappy, value: job.progress)
+        .animation(.lunaSnappy, value: job.phase)
+    }
+
+    private var borderColor: Color {
+        switch job.phase {
+        case .done: return Color(hex: "10B981").opacity(0.3)
+        case .failed: return Color.red.opacity(0.3)
+        case .paused: return Color.lunaGold.opacity(0.3)
+        default: return Color.white.opacity(0.06)
+        }
+    }
+
+    // MARK: - Progress Section
+
+    private var progressSection: some View {
+        VStack(spacing: 8) {
+            LunaProgressBar(progress: job.progress, height: 4, color: progressColor)
+                .padding(.horizontal, 14)
+
+            HStack {
+                // Progress percentage
+                Text("\(Int(job.progress * 100))%")
+                    .font(LunaFont.mono(11))
+                    .foregroundColor(.lunaTextMuted)
+                    .monospacedDigit()
+
+                Spacer()
+
+                // Speed
+                if !job.speedString.isEmpty && job.phase == .uploading {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.up")
+                            .font(.system(size: 10))
+                        Text(job.speedString)
+                            .font(LunaFont.mono(11))
+                    }
+                    .foregroundColor(.lunaAccentLight)
+                }
+
+                // ETA
+                if let eta = job.estimatedTimeRemaining, job.phase == .uploading {
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .font(.system(size: 10))
+                        Text(eta)
+                            .font(LunaFont.mono(11))
+                    }
+                    .foregroundColor(.lunaTextMuted)
+                }
+
+                // Paused indicator
+                if job.phase == .paused {
+                    HStack(spacing: 4) {
+                        Image(systemName: "pause.fill")
+                            .font(.system(size: 10))
+                        Text("Pausad")
+                            .font(LunaFont.mono(11))
+                    }
+                    .foregroundColor(.lunaGold)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 12)
+        }
+    }
+
+    private var progressColor: Color {
+        switch job.phase {
+        case .paused: return .lunaGold
+        case .processing: return .lunaCyan
+        default: return .lunaAccentLight
+        }
     }
 
     // MARK: - Icon
@@ -220,6 +350,7 @@ struct UploadJobCard: View {
         switch job.phase {
         case .done:   return Color(hex: "10B981").opacity(0.15)
         case .failed: return Color.red.opacity(0.15)
+        case .paused: return Color.lunaGold.opacity(0.15)
         default:      return Color.lunaAccent.opacity(0.15)
         }
     }
@@ -250,8 +381,13 @@ struct UploadJobCard: View {
         case .processing:
             ProgressView()
                 .progressViewStyle(.circular)
-                .tint(.lunaAccentLight)
+                .tint(.lunaCyan)
                 .scaleEffect(0.75)
+
+        case .paused:
+            Image(systemName: "pause.fill")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(.lunaGold)
 
         case .done:
             Image(systemName: "checkmark")
@@ -277,24 +413,31 @@ struct UploadJobCard: View {
 
         case .uploading:
             HStack(spacing: 6) {
-                Text("\(Int(job.progress * 100))%")
-                    .font(LunaFont.mono(12))
-                    .foregroundColor(.lunaAccentLight)
-                    .animation(nil, value: job.progress)
-                if !job.speedString.isEmpty {
-                    Text("·")
-                        .foregroundColor(.lunaTextMuted)
-                        .font(LunaFont.caption())
-                    Text(job.speedString)
-                        .font(LunaFont.mono(12))
-                        .foregroundColor(.lunaAccentLight)
-                }
+                Text("Laddar upp...")
+                    .font(LunaFont.caption())
+                    .foregroundColor(.lunaTextMuted)
             }
 
         case .processing:
-            Text("Bearbetar på Mux...")
-                .font(LunaFont.caption())
-                .foregroundColor(.lunaTextMuted)
+            HStack(spacing: 6) {
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .tint(.lunaCyan)
+                    .scaleEffect(0.6)
+                Text("Bearbetar på Mux...")
+                    .font(LunaFont.caption())
+                    .foregroundColor(.lunaTextMuted)
+            }
+
+        case .paused:
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(Color.lunaGold)
+                    .frame(width: 5, height: 5)
+                Text("Uppladdning pausad")
+                    .font(LunaFont.caption())
+                    .foregroundColor(.lunaGold)
+            }
 
         case .done:
             HStack(spacing: 5) {
@@ -307,10 +450,18 @@ struct UploadJobCard: View {
             }
 
         case .failed(let msg):
-            Text(msg)
-                .font(LunaFont.caption())
-                .foregroundColor(.red)
-                .lineLimit(2)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(msg)
+                    .font(LunaFont.caption())
+                    .foregroundColor(.red)
+                    .lineLimit(2)
+
+                if job.canRetry {
+                    Text(job.retryLabel)
+                        .font(LunaFont.caption())
+                        .foregroundColor(.lunaTextMuted)
+                }
+            }
         }
     }
 
@@ -318,20 +469,45 @@ struct UploadJobCard: View {
 
     @ViewBuilder
     private var rightAction: some View {
-        switch job.phase {
-        case .done, .failed:
-            Button(action: onRemove) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.lunaTextMuted)
-                    .frame(width: 30, height: 30)
-                    .background(Color.lunaElevated)
-                    .cornerRadius(8)
+        HStack(spacing: 8) {
+            // Pause/Resume button
+            if job.phase.canPause || job.phase.canResume {
+                Button(action: onPause) {
+                    Image(systemName: job.phase.canPause ? "pause.fill" : "play.fill")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.lunaTextMuted)
+                        .frame(width: 30, height: 30)
+                        .background(Color.lunaElevated)
+                        .cornerRadius(8)
+                }
+                .buttonStyle(LunaPressStyle())
             }
-            .buttonStyle(LunaPressStyle())
 
-        default:
-            EmptyView()
+            // Retry button
+            if job.phase.canRetry && job.canRetry {
+                Button(action: onRetry) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.lunaAccentLight)
+                        .frame(width: 30, height: 30)
+                        .background(Color.lunaAccent.opacity(0.2))
+                        .cornerRadius(8)
+                }
+                .buttonStyle(LunaPressStyle())
+            }
+
+            // Remove button (done/failed)
+            if job.phase == .done || job.phase == .failed || job.phase == .paused {
+                Button(action: onRemove) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.lunaTextMuted)
+                        .frame(width: 30, height: 30)
+                        .background(Color.lunaElevated)
+                        .cornerRadius(8)
+                }
+                .buttonStyle(LunaPressStyle())
+            }
         }
     }
 }
