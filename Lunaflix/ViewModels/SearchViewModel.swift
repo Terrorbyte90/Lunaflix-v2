@@ -8,6 +8,7 @@ final class SearchViewModel: ObservableObject {
     @Published var selectedGenre: Genre? = nil
     @Published var selectedType: ContentType? = nil
     @Published var isSearching: Bool = false
+    @Published private(set) var loadError: String?
 
     private var allContent: [LunaContent] = []
     private var cancellables = Set<AnyCancellable>()
@@ -39,6 +40,7 @@ final class SearchViewModel: ObservableObject {
     }
 
     private func loadContent() async {
+        loadError = nil
         // Use ContentStore if HomeViewModel already fetched content — avoids duplicate API call
         let cached = ContentStore.shared.allContent
         if !cached.isEmpty {
@@ -55,7 +57,9 @@ final class SearchViewModel: ObservableObject {
                 .sorted { ($0.createdAt ?? 0) > ($1.createdAt ?? 0) }
                 .map { LunaContent.fromMuxAsset($0) }
             if !query.isEmpty || hasActiveFilter { performSearch() }
-        } catch {}
+        } catch {
+            loadError = "Sökningen kunde inte uppdateras. Kontrollera nätverket och försök igen."
+        }
     }
 
     func performSearch() {

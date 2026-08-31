@@ -29,7 +29,9 @@ struct SearchView: View {
                             if !vm.featuredGenres.isEmpty { genreGrid }
                             trendingSection
                         } else {
-                            if vm.results.isEmpty {
+                            if let loadError = vm.loadError {
+                                searchErrorState(loadError)
+                            } else if vm.results.isEmpty {
                                 emptyState
                             } else {
                                 resultsGrid
@@ -259,6 +261,28 @@ struct SearchView: View {
     }
 
     // MARK: - Empty State
+
+    private func searchErrorState(_ message: String) -> some View {
+        VStack(spacing: 14) {
+            Image(systemName: "wifi.exclamationmark")
+                .font(.system(size: 36, weight: .semibold))
+                .foregroundColor(.lunaAccentLight)
+            Text("Sökningen är inte tillgänglig")
+                .font(LunaFont.title3())
+                .foregroundColor(.lunaTextPrimary)
+            Text(message)
+                .font(LunaFont.body())
+                .foregroundColor(.lunaTextMuted)
+                .multilineTextAlignment(.center)
+            Button("Försök igen") {
+                Task { await vm.refresh() }
+            }
+            .accentButton()
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 64)
+    }
 
     private var emptyState: some View {
         VStack(spacing: 20) {
