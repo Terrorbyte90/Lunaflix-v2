@@ -210,14 +210,20 @@ final class UploadManager: ObservableObject {
         guard job.phase.canPause else { return }
         job.isPaused = true
         job.phase = .paused
+        // URLSession upload(for:) cannot be suspended reliably here. Cancel the
+        // task and let resume start a clean direct upload instead of pretending
+        // that bytes are still progressing while the request continues.
+        job.uploadTask?.cancel()
+        job.speedBytesPerSec = 0
         LunaHaptic.light()
     }
 
     func resume(_ job: UploadJob) {
         guard job.phase.canResume else { return }
         job.isPaused = false
-        job.phase = .uploading
+        job.phase = .loading
         LunaHaptic.light()
+        launchAvailableJobs()
     }
 
     // MARK: - Retry
@@ -318,8 +324,11 @@ final class UploadManager: ObservableObject {
             LunaHaptic.success()
 
         } catch is CancellationError {
-            // Cancellation is user-visible; keep the job so it can be retried.
-            job.phase = .failed("Uppladdningen avbröts.")
+            // Pause is a controlled cancellation and remains resumable. Other
+            // cancellations (for example remove) are handled by the caller.
+            if !job.isPaused {
+                job.phase = .failed("Uppladdningen avbröts.")
+            }
         } catch {
             job.phase = .failed(error.localizedDescription)
         }
