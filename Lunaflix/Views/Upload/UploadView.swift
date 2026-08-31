@@ -25,10 +25,13 @@ struct UploadView: View {
                             if um.jobs.isEmpty {
                                 emptyHint
                             } else {
+                                queueSummary
                                 jobsList
                             }
                         }
                         .padding(.top, 8)
+                        .frame(maxWidth: 720)
+                        .frame(maxWidth: .infinity)
                     }
                 }
             }
@@ -40,8 +43,8 @@ struct UploadView: View {
                         .foregroundColor(.lunaTextSecondary)
                 }
                 if um.jobs.contains(where: {
-                    if case .done = $0.phase { return true }
-                    if case .failed = $0.phase { return true }
+                    if case .done(_) = $0.phase { return true }
+                    if case .failed(_) = $0.phase { return true }
                     return false
                 }) {
                     ToolbarItem(placement: .navigationBarTrailing) {
@@ -88,6 +91,31 @@ struct UploadView: View {
     }
 
     // MARK: - Jobs List
+
+    private var queueSummary: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Uppladdningskö")
+                    .font(LunaFont.body())
+                    .fontWeight(.semibold)
+                    .foregroundColor(.lunaTextPrimary)
+                Spacer()
+                Text("\(Int(um.totalProgress * 100))% totalt")
+                    .font(LunaFont.mono(12))
+                    .foregroundColor(.lunaAccentLight)
+            }
+            ProgressView(value: um.totalProgress)
+                .tint(.lunaAccentLight)
+            Text("\(um.activeCount) aktiva • två uppladdningar åt gången")
+                .font(LunaFont.caption())
+                .foregroundColor(.lunaTextMuted)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(Color.lunaCard)
+        .cornerRadius(14)
+        .padding(.horizontal, 16)
+    }
 
     private var jobsList: some View {
         ScrollView(.vertical, showsIndicators: false) {
@@ -497,7 +525,7 @@ struct UploadJobCard: View {
             }
 
             // Remove button (done/failed)
-            if job.phase == .done || job.phase == .failed || job.phase == .paused {
+            if !job.phase.isActive && !job.phase.canRetry {
                 Button(action: onRemove) {
                     Image(systemName: "xmark")
                         .font(.system(size: 13, weight: .medium))

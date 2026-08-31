@@ -119,8 +119,8 @@ struct DownloadsView: View {
                     .padding(.vertical, 12)
                     .background(
                         selectedSegment == segment
-                            ? LinearGradient.lunaAccentGradient
-                            : Color.clear
+                            ? AnyShapeStyle(LinearGradient.lunaAccentGradient)
+                            : AnyShapeStyle(Color.clear)
                     )
                     .cornerRadius(10)
                 }
@@ -382,6 +382,7 @@ struct UploadRow: View {
         switch job.phase {
         case .done:   return Color(hex: "10B981").opacity(0.15)
         case .failed: return Color.red.opacity(0.15)
+        case .paused: return Color.orange.opacity(0.15)
         default:      return Color.lunaAccent.opacity(0.15)
         }
     }
@@ -415,6 +416,11 @@ struct UploadRow: View {
                 .tint(.lunaAccentLight)
                 .scaleEffect(0.75)
 
+        case .paused:
+            Image(systemName: "pause.circle.fill")
+                .font(.system(size: 24))
+                .foregroundColor(.orange)
+
         case .done:
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 24))
@@ -447,6 +453,11 @@ struct UploadRow: View {
             Text("Bearbetar...")
                 .font(LunaFont.caption())
                 .foregroundColor(.lunaTextMuted)
+
+        case .paused:
+            Text("Pausad")
+                .font(LunaFont.caption())
+                .foregroundColor(.orange)
 
         case .done:
             Text("Klar")

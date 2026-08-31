@@ -2,6 +2,20 @@ import Foundation
 import PhotosUI
 import SwiftUI
 
+struct UploadQueuePolicy {
+    let maxConcurrent: Int
+
+    init(maxConcurrent: Int = 2) {
+        self.maxConcurrent = max(1, maxConcurrent)
+    }
+
+    func totalProgress(uploadedBytes: [Int64], totalBytes: [Int64]) -> Double {
+        let total = totalBytes.reduce(0, +)
+        guard total > 0 else { return 0 }
+        return min(1, max(0, Double(uploadedBytes.reduce(0, +)) / Double(total)))
+    }
+}
+
 // MARK: - Upload Job Phase
 
 enum UploadJobPhase: Equatable {
@@ -138,29 +152,48 @@ final class UploadManager: ObservableObject {
 
     @Published private(set) var jobs: [UploadJob] = []
 
+    private let policy = UploadQueuePolicy()
+    private var pickerItems: [UUID: PhotosPickerItem] = [:]
+    private var runningJobIDs = Set<UUID>()
+
     private init() {}
 
     var hasJobs: Bool { !jobs.isEmpty }
     var activeCount: Int { jobs.filter { $0.phase.isActive }.count }
+    var totalProgress: Double {
+        policy.totalProgress(
+            uploadedBytes: jobs.map(\.uploadedBytes),
+            totalBytes: jobs.map(\.totalBytes)
+        )
+    }
 
     func enqueue(items: [PhotosPickerItem]) {
         let startIndex = jobs.count + 1
         for (i, item) in items.enumerated() {
             let job = UploadJob(index: startIndex + i)
             jobs.append(job)
-            let task = Task { await run(job: job, pickerItem: item) }
-            job.uploadTask = task
+            pickerItems[job.id] = item
         }
+        launchAvailableJobs()
     }
 
     func remove(_ job: UploadJob) {
         job.uploadTask?.cancel()
+        pickerItems.removeValue(forKey: job.id)
+        runningJobIDs.remove(job.id)
         withAnimation(.lunaSnappy) {
             jobs.removeAll { $0.id == job.id }
         }
     }
 
     func clearFinished() {
+        let finishedIDs = jobs.compactMap { job -> UUID? in
+            switch job.phase {
+            case .done, .failed: return job.id
+            default: return nil
+            }
+        }
+        finishedIDs.forEach { pickerItems.removeValue(forKey: $0) }
         withAnimation(.lunaSnappy) {
             jobs.removeAll {
                 switch $0.phase {
@@ -190,15 +223,14 @@ final class UploadManager: ObservableObject {
     // MARK: - Retry
 
     func retry(_ job: UploadJob) {
-        guard job.canRetry else { return }
+        guard job.canRetry, pickerItems[job.id] != nil else { return }
+        job.uploadTask?.cancel()
         job.retryCount += 1
         job.phase = .loading
         job.progress = 0
         job.speedBytesPerSec = 0
-
-        // Re-enqueue the job - in a real implementation we'd need to store the original item
-        // For now, we just reset the state and user will need to re-select
-        // This is a limitation - in production you'd store the PhotosPickerItem
+        job.uploadedBytes = 0
+        launchAvailableJobs()
         LunaHaptic.medium()
     }
 
@@ -286,11 +318,34 @@ final class UploadManager: ObservableObject {
             LunaHaptic.success()
 
         } catch is CancellationError {
-            // Job was cancelled - remove from list
-            jobs.removeAll { $0.id == job.id }
+            // Cancellation is user-visible; keep the job so it can be retried.
+            job.phase = .failed("Uppladdningen avbröts.")
         } catch {
             job.phase = .failed(error.localizedDescription)
         }
+    }
+
+    private func launchAvailableJobs() {
+        let available = policy.maxConcurrent - runningJobIDs.count
+        guard available > 0 else { return }
+
+        for job in jobs where runningJobIDs.count < policy.maxConcurrent {
+            guard !runningJobIDs.contains(job.id),
+                  job.phase == .loading,
+                  let item = pickerItems[job.id] else { continue }
+            runningJobIDs.insert(job.id)
+            job.uploadTask = Task { [weak self, weak job] in
+                guard let self, let job else { return }
+                await self.run(job: job, pickerItem: item)
+                await self.jobFinished(job)
+            }
+        }
+    }
+
+    private func jobFinished(_ job: UploadJob) {
+        runningJobIDs.remove(job.id)
+        job.uploadTask = nil
+        launchAvailableJobs()
     }
 
     private func pollUploadForAssetID(uploadID: String, maxAttempts: Int = 20) async throws -> String? {

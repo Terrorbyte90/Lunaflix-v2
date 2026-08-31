@@ -5,6 +5,14 @@ import XCTest
 
 final class MuxAssetTests: XCTestCase {
 
+    func testUploadQueuePolicyLimitsConcurrentUploadsAndCalculatesWeightedProgress() {
+        let policy = UploadQueuePolicy(maxConcurrent: 2)
+
+        XCTAssertEqual(policy.maxConcurrent, 2)
+        XCTAssertEqual(policy.totalProgress(uploadedBytes: [25, 50], totalBytes: [100, 100]), 0.375, accuracy: 0.001)
+        XCTAssertEqual(policy.totalProgress(uploadedBytes: [0], totalBytes: [0]), 0)
+    }
+
     // MARK: - Helpers
 
     private func makeAsset(
