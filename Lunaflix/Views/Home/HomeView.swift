@@ -33,14 +33,18 @@ struct HomeView: View {
                             onTap: { selectedContent = $0 }
                         )
                         .frame(height: UIScreen.main.bounds.height * 0.40)
-                    } else {
+                    } else if vm.isLoading {
                         heroSkeleton
+                    } else {
+                        libraryState
                     }
 
                     // Content categories
                     VStack(spacing: 0) {
                         if vm.isLoading {
                             skeletonRows
+                        } else if vm.categories.isEmpty {
+                            EmptyView()
                         } else {
                             ForEach(Array(vm.categories.enumerated()), id: \.element.id) { index, category in
                                 ContentRowView(
@@ -99,6 +103,44 @@ struct HomeView: View {
     }
 
     // MARK: - Navigation Bar
+
+    private var libraryState: some View {
+        VStack(spacing: 16) {
+            Image(systemName: vm.isConfigured ? "film.stack" : "key.slash")
+                .font(.system(size: 42, weight: .semibold))
+                .foregroundStyle(LinearGradient.lunaAccentGradient)
+
+            Text(vm.isConfigured ? "Inga videor ännu" : "Anslut ditt videobibliotek")
+                .font(LunaFont.title2())
+                .foregroundColor(.lunaTextPrimary)
+
+            Text(vm.loadError ?? (vm.isConfigured
+                ? "Ladda upp ditt första klipp för att börja bygga biblioteket."
+                : "Öppna Profil → Mux-inställningar och ange dina uppgifter för att visa videor."))
+                .font(LunaFont.body())
+                .foregroundColor(.lunaTextMuted)
+                .multilineTextAlignment(.center)
+                .lineSpacing(4)
+                .frame(maxWidth: 420)
+
+            if vm.loadError != nil {
+                Button("Försök igen") {
+                    LunaHaptic.light()
+                    vm.refresh()
+                }
+                .font(LunaFont.body())
+                .fontWeight(.semibold)
+                .foregroundColor(.white)
+                .padding(.horizontal, 22)
+                .padding(.vertical, 12)
+                .background(LinearGradient.lunaAccentGradient)
+                .cornerRadius(12)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 72)
+    }
 
     private var navigationBar: some View {
         HStack(spacing: 0) {

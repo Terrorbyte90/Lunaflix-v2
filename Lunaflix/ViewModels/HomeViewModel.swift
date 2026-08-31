@@ -10,6 +10,7 @@ final class HomeViewModel {
     var currentHeroIndex: Int = 0
     var isLoading: Bool = true
     var isConfigured: Bool = false
+    var loadError: String?
 
     private var heroTimer: AnyCancellable?
     private var loadTask: Task<Void, Never>? = nil
@@ -22,6 +23,7 @@ final class HomeViewModel {
 
     private func load() {
         isLoading = true
+        loadError = nil
         loadTask?.cancel()
         loadTask = Task {
             guard !Task.isCancelled else { return }
@@ -58,6 +60,7 @@ final class HomeViewModel {
             } catch {
                 heroContents = []
                 categories = []
+                loadError = "Biblioteket kunde inte hämtas just nu. Kontrollera nätverket och försök igen."
             }
 
             isLoading = false
